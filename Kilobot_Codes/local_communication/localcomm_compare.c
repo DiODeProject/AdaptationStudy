@@ -380,8 +380,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                 Robot_orientation = (msg->data[2] & 0x3F)*12;
 
                 NormalizeAngle(&Robot_orientation);
-                //                debug_print("[t=%d] My GPS coords are: ( %d , %d ) \n",kilo_ticks, Robot_GPS_X , Robot_GPS_Y);
-                //                debug_print("[t=%d] My orientation is: %f\n",kilo_ticks, Robot_orientation);
+
                 new_sa_msg_gps = true;
 
                 // Check if my option had disappeared
@@ -390,9 +389,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
 
                     my_option_quality=0;
-                    //                    if(my_commitment!=1){
-                    //                        debug_print("[t=%d] My option %d disappeared!\n",kilo_ticks,my_commitment);
-                    //                    }
+
                     if(GoingToResampleOption)
                     {
                         GoingToResampleOption=false;
@@ -406,11 +403,6 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                         } while(distance<=minDist);
                     }
 
-                    //                    debug_print("***********My Option Disappeared!!!\n");
-                    //                    debug_print("Robot_GPS_X=%d  |  Robot_GPS_Y=%d\n",Robot_GPS_X,Robot_GPS_Y);
-                    //                    debug_print("my_option_GPS_X=%d  |  my_option_GPS_X=%d\n",my_option_GPS_X,my_option_GPS_Y);
-                    //                    debug_print("Distance=%f\n",sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter);
-                    //                    debug_print("Option Flag=%d\n",msg->data[0] & 0x01);
                 }
             }
             else{
@@ -422,65 +414,126 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                 discovered_option_GPS_X = msg->data[1]>>2 & 0x0F;
                 discovered_option_GPS_Y = (msg->data[1] & 0x03)<< 2 | msg->data[2]>>6 ;
                 discovered_option_mean_quality = (msg->data[2] & 0x0F);
-                //                debug_print("[t=%d] Option GPS location is : ( %d , %d ) \n",kilo_ticks, discovered_option_GPS_X , discovered_option_GPS_Y);
-                //                debug_print("[t=%d] on_option = %d\n",kilo_ticks, on_option);
-                //                debug_print("[t=%d] Option mean quality is :  %d\n",kilo_ticks, discovered_option_mean_quality);
+
                 new_sa_msg_discovery = true;
             }
         }
-
         if (id2 == kilo_uid)
         {
-            //            sa_type = msg->data[4] >> 7;
-            //            if(sa_type==0){
-            //                // unpack payload
-            //                Robot_GPS_X = msg->data[4]>>2 & 0x1F;
-            //                Robot_GPS_Y = (msg->data[4] & 0x03)<< 3 | msg->data[5]>>5 ;
-            //                Robot_orientation = (msg->data[5] & 0x1F)*12;
-            //                NormalizeAngle(&Robot_orientation);
-            //                new_sa_msg_gps = true;
-            //            }
-            //            else{
-            //                // unpack payload
-            //                discovered_option_GPS_X = msg->data[4]>>2 & 0x1F;
-            //                discovered_option_GPS_Y = (msg->data[4] & 0x03)<< 3 | msg->data[5]>>5 ;
-            //                discovered_option_mean_quality = (msg->data[5] & 0x1F);
-            //                //                printf("My GPS coords are: ( %d , %d ) \n", Robot_GPS_X , Robot_GPS_Y);
-            //                //                printf("My orientation is: %f\n", Robot_orientation);
-            //                new_sa_msg_discovery = true;
-            //            }
+            // unpack type
+            sa_type = (msg->data[4] >> 6) & 0x01;
+
+            if(sa_type==0)
+            {
+                // get on_option flag
+                on_option = msg->data[4] >> 7;
+
+                // unpack payload
+                Robot_GPS_X = msg->data[4]>>2 & 0x0F;
+                Robot_GPS_Y = (msg->data[4] & 0x03) << 2 | msg->data[5]>>6 ;
+                Robot_orientation = (msg->data[5] & 0x3F)*12;
+
+                NormalizeAngle(&Robot_orientation);
+
+                new_sa_msg_gps = true;
+
+                // Check if my option had disappeared
+                if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
+                {
+
+
+                    my_option_quality=0;
+
+                    if(GoingToResampleOption)
+                    {
+                        GoingToResampleOption=false;
+                        GoingAway=true;
+
+                        uint32_t distance=0;
+                        do {
+                            Goal_GPS_X=rand()%( GPS_maxcell-1 );
+                            Goal_GPS_Y=rand()%( GPS_maxcell-1 );
+                            distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
+                        } while(distance<=minDist);
+                    }
+
+                }
+            }
+            else{
+
+                // get on_option flag
+                on_option = msg->data[4] >> 7;
+
+                // unpack payload
+                discovered_option_GPS_X = msg->data[4]>>2 & 0x0F;
+                discovered_option_GPS_Y = (msg->data[4] & 0x03)<< 2 | msg->data[5]>>6 ;
+                discovered_option_mean_quality = (msg->data[5] & 0x0F);
+
+                new_sa_msg_discovery = true;
+            }
         }
         if (id3 == kilo_uid)
         {
-            //            sa_type = msg->data[7] >> 7;
-            //            if(sa_type==0){
-            //                // unpack payload
-            //                Robot_GPS_X = msg->data[7]>>2 & 0x1F;
-            //                Robot_GPS_Y = (msg->data[7] & 0x03)<< 3 | msg->data[8]>>5 ;
-            //                Robot_orientation = (msg->data[8] & 0x1F)*12;
-            //                NormalizeAngle(&Robot_orientation);
-            //                new_sa_msg_gps = true;
-            //            }
-            //            else{
-            //                // unpack payload
-            //                discovered_option_GPS_X = msg->data[7]>>2 & 0x1F;
-            //                discovered_option_GPS_Y = (msg->data[7] & 0x03)<< 3 | msg->data[8]>>5 ;
-            //                discovered_option_mean_quality = (msg->data[8] & 0x1F);
-            //                //                  printf("My GPS coords are: ( %d , %d ) \n", Robot_GPS_X , Robot_GPS_Y);
-            //                //                  printf("My orientation is: %f\n", Robot_orientation);
-            //                new_sa_msg_discovery = true;
-            //            }
+            // unpack type
+            sa_type = (msg->data[7] >> 6) & 0x01;
+
+            if(sa_type==0)
+            {
+                // get on_option flag
+                on_option = msg->data[7] >> 7;
+
+                // unpack payload
+                Robot_GPS_X = msg->data[7]>>2 & 0x0F;
+                Robot_GPS_Y = (msg->data[7] & 0x03) << 2 | msg->data[8]>>6 ;
+                Robot_orientation = (msg->data[8] & 0x3F)*12;
+
+                NormalizeAngle(&Robot_orientation);
+
+                new_sa_msg_gps = true;
+
+                // Check if my option had disappeared
+                if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
+                {
+
+
+                    my_option_quality=0;
+
+                    if(GoingToResampleOption)
+                    {
+                        GoingToResampleOption=false;
+                        GoingAway=true;
+
+                        uint32_t distance=0;
+                        do {
+                            Goal_GPS_X=rand()%( GPS_maxcell-1 );
+                            Goal_GPS_Y=rand()%( GPS_maxcell-1 );
+                            distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
+                        } while(distance<=minDist);
+                    }
+
+                }
+            }
+            else{
+
+                // get on_option flag
+                on_option = msg->data[7] >> 7;
+
+                // unpack payload
+                discovered_option_GPS_X = msg->data[7]>>2 & 0x0F;
+                discovered_option_GPS_Y = (msg->data[7] & 0x03)<< 2 | msg->data[8]>>6 ;
+                discovered_option_mean_quality = (msg->data[8] & 0x0F);
+
+                new_sa_msg_discovery = true;
+            }
         }
     }
-    else if (msg->type == 1) { // Options lookup table
+    else if (msg->type == 1) {
+        // Options lookup table
         options_IDs[number_of_options] = msg->data[0];
         options_GPS_X[number_of_options] = msg->data[1];
         options_GPS_Y[number_of_options] = msg->data[2];
         Robot_FoV=msg->data[3]/100.0-GPS_To_Meter;
-        //        variance=msg->data[3]/10.0;
-        //        debug_print("Robot_FoV=%f\n",Robot_FoV);
-        //        GPS_maxcell=msg->data[4];
-        //        debug_print("GPS_maxcell=%d\n",GPS_maxcell);
+
         minDist=msg->data[4];
         my_commitment=msg->data[5];
 
@@ -496,9 +549,6 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
         my_option_GPS_X=msg->data[7];
         my_option_GPS_Y=msg->data[8];
 
-
-        //        debug_print("minDist=%d\n",minDist);
-        //debug_print("I received option %d located at (%d,%d) \n",options_IDs[number_of_options], options_GPS_X[number_of_options], options_GPS_Y[number_of_options]);
         number_of_options++;
     }
     else if (msg->type == 120) {
@@ -512,7 +562,8 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
     /*
     *  Runtime identification messages
     */
-    else if (msg->type == 119) { // runtime identification
+    else if (msg->type == 119) {
+        // runtime identification
         int id = (msg->data[0] << 8) | msg->data[1];
         if (id >= 0){ // runtime identification ongoing
             backup_kiloticks=kilo_ticks;
@@ -541,15 +592,11 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
         broadcast_flag=true;
     }
 
-    //    else if (msg->type == AGENT && !GoingToResampleOption && !GoingAway) { // the received message is from another KB
-    //    else if (msg->type == AGENT && !GoingToResampleOption) { // the received message is from another KB
-    else if (msg->type == AGENT) { // the received message is from another KB
+    else if (msg->type == AGENT) {
+        // the received message is from another KB
         received_option_GPS_X = msg->data[0];
         received_option_GPS_Y = msg->data[1];
         received_message = (bool) msg->data[2];
-        //        if(kilo_ticks>=70000){
-        //            debug_print("[t=%d] **** received_option_GPS_X=%d -- received_option_GPS_Y=%d -- received_message=%d\n", kilo_ticks,received_option_GPS_X,received_option_GPS_Y,received_message);
-        //        }
     }
 
     if (new_sa_msg_discovery == true) {
@@ -565,9 +612,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
         if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) )
         {
             set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality);
-            /*            if(my_option_quality!=0){
-            // debug_print("Time[%d] - My commitement is option %d which has quality %d\n",kilo_ticks,my_commitment,my_option_quality);
-                        }*/
+
             if(GoingToResampleOption)
             {
                 GoingToResampleOption=false;
