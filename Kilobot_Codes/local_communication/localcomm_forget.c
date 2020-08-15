@@ -1,9 +1,8 @@
-#include <kilolib.h>
+#include "kilolib.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "agentCDCIlocal.h"
-#include <debug.h>
+#include "debug.h"
 #include <float.h>
 
 #define PI 3.14159265
@@ -36,8 +35,14 @@ bool message_sent = false;
 /* Flag for decision to broadcast a message */
 bool broadcast_msg = false;
 
+/* Flag for ARK/Kbs Speaking Management */
+bool broadcast_flag=false;
+
 /* current motion type */
 motion_t current_motion_type = STOP;
+
+/* current LED color */
+uint16_t current_LED_color=RGB(0,0,0);
 
 /* current commitment */
 uint8_t my_commitment=2;
@@ -104,6 +109,15 @@ uint8_t options_GPS_Y[20];
 uint8_t number_of_options=0;
 
 bool GoingToResampleOption=false;
+
+/* RTID variables */
+bool runtime_identification=false;
+uint32_t backup_kiloticks;
+uint16_t backup_LED;
+motion_t backup_motion=STOP;
+
+
+float RotSpeed=38.0;
 
 uint8_t GPS_maxcell=16;
 uint8_t minDist=4;
@@ -189,7 +203,8 @@ double AngleToGoal() {
 /*-------------------------------------------------------------------*/
 uint8_t CoordsToID(uint8_t option_GPS_X,uint8_t option_GPS_Y)
 {
-    for(int i=0;i<number_of_options;i++){
+    int i;
+    for(i=0;i<number_of_options;i++){
         if( (option_GPS_X==options_GPS_X[i]) && (option_GPS_Y==options_GPS_Y[i]) )
         {
             return options_IDs[i];
@@ -203,7 +218,8 @@ uint8_t CoordsToID(uint8_t option_GPS_X,uint8_t option_GPS_Y)
 /*-------------------------------------------------------------------*/
 uint8_t CoordsToID2(uint8_t X,uint8_t Y)
 {
-    for(int i=0;i<number_of_options;i++){
+    int i;
+    for(i=0;i<number_of_options;i++){
         if( (X==options_GPS_X[i]) && (Y==options_GPS_Y[i]) )
         {
             return i+1;
@@ -217,35 +233,60 @@ uint8_t CoordsToID2(uint8_t X,uint8_t Y)
 /* Function for setting the motor speed                              */
 /*-------------------------------------------------------------------*/
 void set_motion( motion_t new_motion_type ) {
-    if( current_motion_type != new_motion_type ){
+    if( current_motion_type != new_motion_type )
+    {
+        current_motion_type = new_motion_type;
+
         int calibrated = true;
-        switch( new_motion_type ) {
+        switch( new_motion_type )
+        {
         case FORWARD:
-            spinup_motors();
-            if (calibrated)
-                set_motors(kilo_straight_left,kilo_straight_right);
+            if(!runtime_identification)
+                spinup_motors();
+            if (calibrated){
+
+                if(!runtime_identification)
+                    set_motors(kilo_straight_left,kilo_straight_right);
+            }
             else
-                set_motors(67,67);
+            {
+                if(!runtime_identification)
+                    set_motors(67,67);
+            }
             break;
         case TURN_LEFT:
-            spinup_motors();
+            if(!runtime_identification)
+                spinup_motors();
             if (calibrated)
-                set_motors(kilo_turn_left,0);
-            else
-                set_motors(70,0);
+            {
+                if(!runtime_identification)
+                    set_motors(kilo_turn_left,0);
+            }
+            else{
+                if(!runtime_identification)
+                    set_motors(70,0);
+            }
             break;
         case TURN_RIGHT:
-            spinup_motors();
-            if (calibrated)
-                set_motors(0,kilo_turn_right);
-            else
-                set_motors(0,70);
+            if(!runtime_identification)
+                spinup_motors();
+            if (calibrated){
+                if(!runtime_identification)
+                    set_motors(0,kilo_turn_right);
+            }
+            else{
+                if(!runtime_identification)
+                    set_motors(0,70);
+            }
             break;
         case STOP:
         default:
             set_motors(0,0);
         }
-        current_motion_type = new_motion_type;
+
+        if(current_motion_type!=STOP){
+            backup_motion=current_motion_type;
+        }
     }
 }
 
@@ -465,9 +506,41 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             set_color(RGB(3,0,0));
         }
     }
+    /*
+    *  Runtime identification messages
+    */
+    else if (msg->type == 119) { // runtime identification
+        int id = (msg->data[0] << 8) | msg->data[1];
+        if (id >= 0){ // runtime identification ongoing
+            backup_kiloticks=kilo_ticks;
+            set_motion(STOP);
+            runtime_identification = true;
+            if (id == kilo_uid) {
+                set_color(RGB(0,0,3));
+            } else {
+                set_color(RGB(3,0,0));
+            }
+        } else { // runtime identification ended
+            kilo_ticks=backup_kiloticks;
+            set_motion(backup_motion);
+            set_color(current_LED_color);
+            runtime_identification = false;
+        }
+    }
+    /*
+     *  Speaking enable/disable messages
+     */
+    else if (msg->type == 5) {
+        broadcast_flag=false;
+    }
+
+    else if (msg->type == 6) {
+        broadcast_flag=true;
+    }
+
     //    else if (msg->type == AGENT && !GoingToResampleOption && !GoingAway) { // the received message is from another KB
-//    else if (msg->type == AGENT && !GoingToResampleOption) { // the received message is from another KB
-        else if (msg->type == AGENT) { // the received message is from another KB
+    //    else if (msg->type == AGENT && !GoingToResampleOption) { // the received message is from another KB
+    else if (msg->type == AGENT) { // the received message is from another KB
         received_option_GPS_X = msg->data[0];
         received_option_GPS_Y = msg->data[1];
         received_message = (bool) msg->data[2];
@@ -627,8 +700,8 @@ void update_commitment() {
                 if (discovered)
                 {
                     P_abandon = param;
-//                    P_abandon = param/(discovered_option_quality / 100.0);
-//                      P_abandon = (discovered_option_quality / 100.0)*param;
+                    //                    P_abandon = param/(discovered_option_quality / 100.0);
+                    //                      P_abandon = (discovered_option_quality / 100.0)*param;
                 }
                 else{
                     P_abandon = 0;
@@ -753,13 +826,13 @@ void GoToOption(){
                 if(AngleToGoal()>0){
                     set_motion(TURN_LEFT);
                     last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/45.0*30.0 );
+                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/RotSpeed*32.0 );
                     //                    debug_print("In need to turn left for: %d\n", turning_ticks );
                 }
                 else{
                     set_motion(TURN_RIGHT);
                     last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/45.0*30.0 );
+                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/RotSpeed*32.0 );
                     //                    debug_print("In need to turn right for: %d\n", turning_ticks );
                 }
             }
@@ -804,7 +877,7 @@ void update_social_parameters()
 /* Function to broadcast the commitment message                     */
 /*-------------------------------------------------------------------*/
 void broadcast() {
-    if( kilo_ticks > last_broadcast_ticks + broadcast_ticks ) {
+    if ( ( kilo_ticks > last_broadcast_ticks + broadcast_ticks ) && (broadcast_flag==true) ) {
         last_broadcast_ticks = kilo_ticks;
         if ( my_option_GPS_X!=0 || my_option_GPS_Y!=0 )
         {
@@ -875,48 +948,48 @@ void tx_message_success() {
 /* Main loop                                                         */
 /*-------------------------------------------------------------------*/
 void loop() {
+    if(!runtime_identification)
+    {
+        if(GoingToResampleOption || GoingAway){
+            GoToOption();
+        }
+        else{
+            random_walk();
+        }
 
-    if(GoingToResampleOption || GoingAway){
-        GoToOption();
+        update_commitment();
+        broadcast();
+
+        /* Set LED color*/
+        //    if(GoingToResampleOption || GoingAway){
+        //        set_color(RGB(3,0,0));
+        //    }
+        //    else{
+
+        switch( my_commitment ) {
+        case 5:
+            set_color(RGB(0,3,3));
+            break;
+        case 4:
+            set_color(RGB(3,0,3));
+            break;
+        case 3:
+            set_color(RGB(0,0,3));
+            break;
+        case 2:
+            set_color(RGB(0,3,0));
+            break;
+        case 1:
+            set_color(RGB(3,0,0));
+            break;
+        case 0:
+        default:
+            set_color(RGB(0,0,0));
+            break;
+        }
+
     }
-    else{
-        random_walk();
-    }
-
-    update_commitment();
-    broadcast();
-
-    /* Set LED color*/
-    //    if(GoingToResampleOption || GoingAway){
-    //        set_color(RGB(3,0,0));
-    //    }
-    //    else{
-
-    switch( my_commitment ) {
-    case 5:
-        set_color(RGB(0,3,3));
-        break;
-    case 4:
-        set_color(RGB(3,0,3));
-        break;
-    case 3:
-        set_color(RGB(0,0,3));
-        break;
-    case 2:
-        set_color(RGB(0,3,0));
-        break;
-    case 1:
-        set_color(RGB(3,0,0));
-        break;
-    case 0:
-    default:
-        set_color(RGB(0,0,0));
-        break;
-    }
-
-    debug_info_set(commitement, my_commitment);
 }
-
 
 /*-------------------------------------------------------------------*/
 /* Main function                                                     */
@@ -927,18 +1000,6 @@ int main()
     kilo_message_tx = message_tx;
     kilo_message_tx_success = tx_message_success;
     kilo_message_rx=message_rx;
-
-    ////////////////////////////////////////
-    // DEBUGGING INFORMATION
-    //
-    // Here is the place where you initialize the debugging information
-    // struct.
-    //
-    // From now on, you can safely use 'debug_info' to refer to your
-    // struct.
-    debug_info_create();
-    ////////////////////////////////////////
-
     kilo_start(setup, loop);
     return 0;
 }
