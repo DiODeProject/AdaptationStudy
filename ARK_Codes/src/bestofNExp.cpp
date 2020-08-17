@@ -570,7 +570,7 @@ void mykilobotexperiment::setupEnvironments( )
         {
             Op.quality=8.0;
             Op.AppearanceTime=0.0;
-            Op.DisappearanceTime=1200.0;
+            Op.DisappearanceTime=30.0;
             Op.QualityChangeTime=0.0;
             Op.QualityAfterChange=0.0;
             Op.color=QColor(255,0,0);
@@ -581,7 +581,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.quality=6.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=2400.0;
+            Op.QualityChangeTime=60.0;
             Op.QualityAfterChange=4.0;
             Op.color=QColor(0,255,0);
         }
@@ -590,7 +590,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.quality=4.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=2400.0;
+            Op.QualityChangeTime=60.0;
             Op.QualityAfterChange=6.0;
             Op.color=QColor(0,0,255);
         }
@@ -628,7 +628,7 @@ void mykilobotexperiment::plotEnvironment() {
 
             m_optionsEnv.m_Options[i].quality=m_optionsEnv.m_Options[i].QualityAfterChange;
 
-            qDebug() << "now its quality is" << m_optionsEnv.m_Options[i].quality <<std::endl;
+            qDebug() << "now its quality is" << m_optionsEnv.m_Options[i].quality;
 
         }
 
