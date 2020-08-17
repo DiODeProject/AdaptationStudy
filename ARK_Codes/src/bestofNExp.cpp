@@ -620,7 +620,7 @@ void mykilobotexperiment::plotEnvironment() {
     option Op;
     for(int i=0;i<m_optionsEnv.m_Options.size();i++){
         Op=m_optionsEnv.m_Options[i];
-        drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, -1,"",true);
+        drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, 2,"",true);
     }
 }
 
