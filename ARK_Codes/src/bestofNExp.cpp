@@ -403,9 +403,9 @@ void mykilobotexperiment::run()
             if(!m_data_retrieval_running)
             {
 
-//                qDebug() << "m_VirtualSensorsNeedUpdate=" <<m_optionsEnv.m_VirtualSensorsNeedUpdate;
-//                qDebug() << "m_time-Trobot_last=" <<m_time-Trobot_last;
-//                qDebug() << "broadcasing=" <<broadcasing;
+                //                qDebug() << "m_VirtualSensorsNeedUpdate=" <<m_optionsEnv.m_VirtualSensorsNeedUpdate;
+                //                qDebug() << "m_time-Trobot_last=" <<m_time-Trobot_last;
+                //                qDebug() << "broadcasing=" <<broadcasing;
 
 
                 /* Check if the robots are required to stop speaking:  time to update virtual sensors */
@@ -557,14 +557,14 @@ void mykilobotexperiment::setupEnvironments( )
 
         Op.ID=i;
 
-//        if( i == m_NumberOfOptions )
-//        {
-//            Op.quality=m_HighestQuality;
-//        }
-//        else
-//        {
-//            Op.quality=m_Difficulty*m_HighestQuality;
-//        }
+        //        if( i == m_NumberOfOptions )
+        //        {
+        //            Op.quality=m_HighestQuality;
+        //        }
+        //        else
+        //        {
+        //            Op.quality=m_Difficulty*m_HighestQuality;
+        //        }
 
         if( i == 3 )
         {
@@ -599,7 +599,7 @@ void mykilobotexperiment::setupEnvironments( )
 
         Op.posX=(m_PolygoneRadius*qCos((m_NumberOfOptions-RandPos[i-1])*2*M_PI/m_NumberOfOptions)+1)*M_TO_PIXEL+m_Xoffset;
         Op.posY=(m_PolygoneRadius*qSin((m_NumberOfOptions-RandPos[i-1])*2*M_PI/m_NumberOfOptions)+1)*M_TO_PIXEL+m_Yoffset;
-//        Op.color=QColor(255,255-Op.quality/m_HighestQuality*255,255-Op.quality/m_HighestQuality*255);
+        //        Op.color=QColor(255,255-Op.quality/m_HighestQuality*255,255-Op.quality/m_HighestQuality*255);
 
         // Set Option GPS coordinates
         QPoint GPS_cords=m_optionsEnv.PositionToGPS(QPointF(Op.posX,Op.posY));
@@ -619,8 +619,22 @@ void mykilobotexperiment::setupEnvironments( )
 void mykilobotexperiment::plotEnvironment() {
     option Op;
     for(int i=0;i<m_optionsEnv.m_Options.size();i++){
+
         Op=m_optionsEnv.m_Options[i];
-        drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, 8,"",true);
+
+        if(m_optionsEnv.m_Options[i].QualityChangeTime!= 0 && m_time == m_optionsEnv.m_Options[i].QualityChangeTime)
+        {
+            qDebug() << "Option " << i+1 << "had quality "<< m_optionsEnv.m_Options[i].quality;
+
+            m_optionsEnv.m_Options[i].quality=m_optionsEnv.m_Options[i].QualityAfterChange;
+
+            qDebug() << "now its quality is" << m_optionsEnv.m_Options[i].quality <<std::endl;
+
+        }
+
+        if(Op.DisappearanceTime!=0 && m_time<Op.DisappearanceTime){
+            drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, 8,"",true);
+        }
     }
 }
 
