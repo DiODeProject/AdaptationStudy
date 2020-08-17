@@ -148,7 +148,7 @@ private:
 
 
     // Env setup
-    unsigned int m_NumberOfOptions=2;
+    unsigned int m_NumberOfOptions=3;
     float m_Difficulty=0.6;
     float m_HighestQuality=8.0;
     float m_OptionsRadius=0.20;

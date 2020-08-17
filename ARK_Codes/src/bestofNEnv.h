@@ -22,6 +22,11 @@ struct option {
     unsigned int GPS_Y; // in cells
     float rad;  // in pixel
     QColor color;
+
+    float AppearanceTime=0;
+    float DisappearanceTime=0;
+    float QualityChangeTime=0;
+    float QualityAfterChange;
 };
 
 enum EncounterTypes {

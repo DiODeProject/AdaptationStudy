@@ -557,21 +557,49 @@ void mykilobotexperiment::setupEnvironments( )
 
         Op.ID=i;
 
-        if( i == m_NumberOfOptions )
-        {
-            Op.quality=m_HighestQuality;
-        }
-        else
-        {
-            Op.quality=m_Difficulty*m_HighestQuality;
-        }
+//        if( i == m_NumberOfOptions )
+//        {
+//            Op.quality=m_HighestQuality;
+//        }
+//        else
+//        {
+//            Op.quality=m_Difficulty*m_HighestQuality;
+//        }
 
+        if( i == 3 )
+        {
+            Op.quality=8.0;
+            Op.AppearanceTime=0.0;
+            Op.DisappearanceTime=1200.0;
+            Op.QualityChangeTime=0.0;
+            Op.QualityAfterChange=0.0;
+            Op.color=QColor(255,0,0);
+
+        }
+        else if ( i == 2)
+        {
+            Op.quality=6.0;
+            Op.AppearanceTime=0.0;
+            Op.DisappearanceTime=0.0;
+            Op.QualityChangeTime=2400.0;
+            Op.QualityAfterChange=4.0;
+            Op.color=QColor(0,255,0);
+        }
+        else if ( i == 1)
+        {
+            Op.quality=4.0;
+            Op.AppearanceTime=0.0;
+            Op.DisappearanceTime=0.0;
+            Op.QualityChangeTime=2400.0;
+            Op.QualityAfterChange=6.0;
+            Op.color=QColor(0,0,255);
+        }
 
         Op.rad=m_OptionsRadius*M_TO_PIXEL;
 
         Op.posX=(m_PolygoneRadius*qCos((m_NumberOfOptions-RandPos[i-1])*2*M_PI/m_NumberOfOptions)+1)*M_TO_PIXEL+m_Xoffset;
         Op.posY=(m_PolygoneRadius*qSin((m_NumberOfOptions-RandPos[i-1])*2*M_PI/m_NumberOfOptions)+1)*M_TO_PIXEL+m_Yoffset;
-        Op.color=QColor(255,255-Op.quality/m_HighestQuality*255,255-Op.quality/m_HighestQuality*255);
+//        Op.color=QColor(255,255-Op.quality/m_HighestQuality*255,255-Op.quality/m_HighestQuality*255);
 
         // Set Option GPS coordinates
         QPoint GPS_cords=m_optionsEnv.PositionToGPS(QPointF(Op.posX,Op.posY));
