@@ -581,7 +581,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.quality=6.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=60.0;
+            Op.QualityChangeTime=10.0;
             Op.QualityAfterChange=4.0;
             Op.color=QColor(0,255,0);
         }
@@ -590,7 +590,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.quality=4.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=60.0;
+            Op.QualityChangeTime=10.0;
             Op.QualityAfterChange=6.0;
             Op.color=QColor(0,0,255);
         }
@@ -622,17 +622,24 @@ void mykilobotexperiment::plotEnvironment() {
 
         Op=m_optionsEnv.m_Options[i];
 
-        if(m_optionsEnv.m_Options[i].QualityChangeTime!= 0 && m_time == m_optionsEnv.m_Options[i].QualityChangeTime)
+        if(m_optionsEnv.m_Options[i].QualityChangeTime!= 0.0
+                && m_time >= m_optionsEnv.m_Options[i].QualityChangeTime
+                && !m_optionsEnv.m_Options[i].QualityChangeApplied)
         {
+            m_optionsEnv.m_Options[i].QualityChangeApplied = true;
+
             qDebug() << "Option " << i+1 << "had quality "<< m_optionsEnv.m_Options[i].quality;
 
             m_optionsEnv.m_Options[i].quality=m_optionsEnv.m_Options[i].QualityAfterChange;
 
             qDebug() << "now its quality is" << m_optionsEnv.m_Options[i].quality;
-
         }
 
-        if(Op.DisappearanceTime!=0 && m_time<Op.DisappearanceTime){
+        if(Op.DisappearanceTime!=0 && m_time>=Op.DisappearanceTime)
+        {
+
+        }
+        else{
             drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, 8,"",true);
         }
     }

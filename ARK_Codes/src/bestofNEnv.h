@@ -25,8 +25,10 @@ struct option {
 
     float AppearanceTime=0;
     float DisappearanceTime=0;
+
     float QualityChangeTime=0;
     float QualityAfterChange;
+    bool QualityChangeApplied=false;
 };
 
 enum EncounterTypes {
