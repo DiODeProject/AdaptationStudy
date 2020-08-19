@@ -365,7 +365,7 @@ void mykilobotexperiment::run()
         emit broadcastMessage(msg);
 
         broadcasing=true;
-        t_since=1;
+        t_since=3;
 
         m_NumberOfConfigMsgsSent++;
     }
@@ -380,7 +380,7 @@ void mykilobotexperiment::run()
         emit broadcastMessage(msg);
 
         broadcasing=true;
-        t_since=1;
+        t_since=3;
 
         RobotSpeaking=true;
     }
