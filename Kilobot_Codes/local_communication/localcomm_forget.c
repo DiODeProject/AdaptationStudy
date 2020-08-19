@@ -505,26 +505,29 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
     }
     else if (msg->type == 10) {
         // Options lookup table
-        options_IDs[number_of_options] = msg->data[0];
-        options_GPS_X[number_of_options] = msg->data[1];
-        options_GPS_Y[number_of_options] = msg->data[2];
-        Robot_FoV=msg->data[3]/100.0-GPS_To_Meter;
-        minDist=msg->data[4];
-        my_commitment=msg->data[5];
+        if(number_of_options==0 || msg->data[0]!=options_IDs[number_of_options-1]){
+            options_IDs[number_of_options] = msg->data[0];
+            options_GPS_X[number_of_options] = msg->data[1];
+            options_GPS_Y[number_of_options] = msg->data[2];
+            Robot_FoV=msg->data[3]/100.0-GPS_To_Meter;
 
-        discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],variance) ) );
-        if(discovered_option_quality>100){
-            discovered_option_quality=100;
+            minDist=msg->data[4];
+            my_commitment=msg->data[5];
+
+            discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],variance) ) );
+            if(discovered_option_quality>100){
+                discovered_option_quality=100;
+            }
+            if(discovered_option_quality<0){
+                discovered_option_quality=0;
+            }
+
+            my_option_quality=discovered_option_quality;
+            my_option_GPS_X=msg->data[7];
+            my_option_GPS_Y=msg->data[8];
+
+            number_of_options++;
         }
-        if(discovered_option_quality<0){
-            discovered_option_quality=0;
-        }
-
-        my_option_quality=discovered_option_quality;
-        my_option_GPS_X=msg->data[7];
-        my_option_GPS_Y=msg->data[8];
-
-        number_of_options++;
     }
     else if (msg->type == 120) {
         int id = (msg->data[0] << 8) | msg->data[1];
