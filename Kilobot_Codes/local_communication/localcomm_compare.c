@@ -996,10 +996,10 @@ void loop() {
             set_color(RGB(3,0,3));
             break;
         case 3:
-            set_color(RGB(0,0,3));
+            set_color(RGB(0,3,0));
             break;
         case 2:
-            set_color(RGB(0,3,0));
+            set_color(RGB(0,0,3));
             break;
         case 1:
             set_color(RGB(3,0,0));

@@ -617,7 +617,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.DisappearanceTime=0.0;
             Op.QualityChangeTime=2400.0;
             Op.QualityAfterChange=4.0;
-            Op.color=QColor(0,255,0);
+            Op.color=QColor(0,0,255);
         }
         else if ( i == 3)
         {
@@ -626,7 +626,7 @@ void mykilobotexperiment::setupEnvironments( )
             Op.DisappearanceTime=0.0;
             Op.QualityChangeTime=2400.0;
             Op.QualityAfterChange=6.0;
-            Op.color=QColor(0,0,255);
+            Op.color=QColor(0,255,0);
         }
 
         Op.rad=m_OptionsRadius*M_TO_PIXEL;
