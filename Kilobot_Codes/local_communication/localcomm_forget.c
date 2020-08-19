@@ -12,8 +12,7 @@
 //#define OPT_RED 2
 //#define OPT_GREEN 3
 
-#define	BEACON 77
-#define	AGENT 21
+#define	AGENT_MSG 21
 
 /* Enum for different motion types */
 typedef enum {
@@ -60,12 +59,6 @@ uint32_t last_motion_ticks = 0;
 uint32_t last_broadcast_ticks = 0;
 uint32_t update_ticks = 60; /* setting how often performing the commitment update. a tick here is every ~31ms */
 uint32_t last_update_ticks = 0;
-
-// parameters
-double h=1;
-double k=1;
-const double scaling = 0.032258;
-double timeScaling;
 
 /* Variables for outgoing messages */
 message_t message;
@@ -214,22 +207,6 @@ uint8_t CoordsToID(uint8_t option_GPS_X,uint8_t option_GPS_Y)
 }
 
 /*-------------------------------------------------------------------*/
-/* Coordinates to option ID  2                                        */
-/*-------------------------------------------------------------------*/
-uint8_t CoordsToID2(uint8_t X,uint8_t Y)
-{
-    int i;
-    for(i=0;i<number_of_options;i++){
-        if( (X==options_GPS_X[i]) && (Y==options_GPS_Y[i]) )
-        {
-            return i+1;
-        }
-    }
-
-    return 0;
-}
-
-/*-------------------------------------------------------------------*/
 /* Function for setting the motor speed                              */
 /*-------------------------------------------------------------------*/
 void set_motion( motion_t new_motion_type ) {
@@ -319,21 +296,16 @@ void setup()
     /* Initialise random seed */
     uint8_t seed = rand_hard();
     rand_seed(seed);
-    seed = rand_hard();
-    srand(seed);
 
     /* Initialise motion variables */
     set_motion( FORWARD );
-    last_motion_ticks = rand_soft() % max_straight_ticks + 1;
+    last_motion_ticks = rand() % max_straight_ticks + 1;
 
     /* Initialise broadcast variables */
-    last_broadcast_ticks = rand_soft() % broadcast_ticks + 1;
+    last_broadcast_ticks = rand() % broadcast_ticks + 1;
 
     /** Initialise update variables */
     last_update_ticks= rand() % update_ticks;
-
-    /* Initialise the scaling factor */
-    timeScaling = scaling * 0.0333333 * update_ticks;
 
     /* Initialise received message variables */
     received_message = false;
@@ -350,6 +322,35 @@ void setup()
 
 }
 
+/*----------------------------------------------------------------------------------------------------------------*/
+/* Function to set a Goal_GPS_(X and Y) to a location that is at least minDist distant from discovered_option_GPS */
+/*----------------------------------------------------------------------------------------------------------------*/
+void set_random_goal_location_far_from_option() {
+    GoingToResampleOption=false;
+    GoingAway=true;
+
+    uint32_t distance=0;
+    do {
+        Goal_GPS_X=rand()%( GPS_maxcell-1 );
+        Goal_GPS_Y=rand()%( GPS_maxcell-1 );
+        distance=sqrt((-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
+    } while(distance<=minDist);
+}
+
+/*-------------------------------------------------------------------------------*/
+/* Function to check if the option has disappeared (to call at each GSP reading) */
+/*-------------------------------------------------------------------------------*/
+void check_if_my_option_has_disappeared() {
+    if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
+    {
+        my_option_quality=0;
+
+        if(GoingToResampleOption)
+        {
+            set_random_goal_location_far_from_option();
+        }
+    }
+}
 
 /*-------------------------------------------------------------------*/
 /* Callback function for message reception                           */
@@ -380,27 +381,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 new_sa_msg_gps = true;
 
-                // Check if my option had disappeared
-                if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
-                {
-
-
-                    my_option_quality=0;
-
-                    if(GoingToResampleOption)
-                    {
-                        GoingToResampleOption=false;
-                        GoingAway=true;
-
-                        uint32_t distance=0;
-                        do {
-                            Goal_GPS_X=rand()%( GPS_maxcell-1 );
-                            Goal_GPS_Y=rand()%( GPS_maxcell-1 );
-                            distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-                        } while(distance<=minDist);
-                    }
-
-                }
+                check_if_my_option_has_disappeared();
             }
             else{
 
@@ -434,27 +415,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 new_sa_msg_gps = true;
 
-                // Check if my option had disappeared
-                if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
-                {
-
-
-                    my_option_quality=0;
-
-                    if(GoingToResampleOption)
-                    {
-                        GoingToResampleOption=false;
-                        GoingAway=true;
-
-                        uint32_t distance=0;
-                        do {
-                            Goal_GPS_X=rand()%( GPS_maxcell-1 );
-                            Goal_GPS_Y=rand()%( GPS_maxcell-1 );
-                            distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-                        } while(distance<=minDist);
-                    }
-
-                }
+                check_if_my_option_has_disappeared();
             }
             else{
 
@@ -488,27 +449,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 new_sa_msg_gps = true;
 
-                // Check if my option had disappeared
-                if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
-                {
-
-
-                    my_option_quality=0;
-
-                    if(GoingToResampleOption)
-                    {
-                        GoingToResampleOption=false;
-                        GoingAway=true;
-
-                        uint32_t distance=0;
-                        do {
-                            Goal_GPS_X=rand()%( GPS_maxcell-1 );
-                            Goal_GPS_Y=rand()%( GPS_maxcell-1 );
-                            distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-                        } while(distance<=minDist);
-                    }
-
-                }
+                check_if_my_option_has_disappeared();
             }
             else{
 
@@ -588,7 +529,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
         broadcast_flag=true;
     }
 
-    else if (msg->type == AGENT) { // the received message is from another KB
+    else if (msg->type == AGENT_MSG) { // the received message is from another KB
         received_option_GPS_X = msg->data[0];
         received_option_GPS_Y = msg->data[1];
         received_message = (bool) msg->data[2];
@@ -610,15 +551,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
             if(GoingToResampleOption)
             {
-                GoingToResampleOption=false;
-                GoingAway=true;
-
-                uint32_t distance=0;
-                do {
-                    Goal_GPS_X=rand()%( GPS_maxcell-1 );
-                    Goal_GPS_Y=rand()%( GPS_maxcell-1 );
-                    distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-                } while(distance<=minDist);
+                set_random_goal_location_far_from_option();
             }
             return;
         }
@@ -639,14 +572,6 @@ uint8_t normaliseQuality(uint8_t quality){
     return norm_quality_ui;
 }
 
-/*--------------------------------------------------------------------------*/
-/* Function to update the parameters"k"                                     */
-/*--------------------------------------------------------------------------*/
-void update_individual_parameters()
-{
-    k=1.0;
-}
-
 
 /*--------------------------------------------------------------------------*/
 /* Function for updating the commitment state (wrt to the received message) */
@@ -655,7 +580,6 @@ void update_commitment() {
     if(true){
         /* Updating the commitment only each update_ticks */
         if( kilo_ticks > last_update_ticks + update_ticks ) {
-            update_individual_parameters();
             last_update_ticks = kilo_ticks;
             /* drawing a random number */
             int randomInt = RAND_MAX;
@@ -673,9 +597,8 @@ void update_commitment() {
                 bool individual=false;
 
                 /* compute the transition probabilities as a fucntion of the estimated qualities */
-                /* discovery is only possible if the message is received from a BEACON robot */
+                /* discovery is only possible if the robot has virtually sensed an option (via ARK) */
                 if (discovered){
-                    //                    P_discovery = timeScaling * k *(discovered_option_quality / 10.0);
                     P_discovery = discovered_option_quality / 100.0;
                 } else {
                     P_discovery = 0;
@@ -712,15 +635,7 @@ void update_commitment() {
                     set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
 
                     /* Go away from the discovered option */
-
-                    uint32_t distance=0;
-                    do {
-                        Goal_GPS_X=rand()%( GPS_maxcell-1 );
-                        Goal_GPS_Y=rand()%( GPS_maxcell-1 );
-                        distance=sqrt((discovered_option_GPS_X-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-                    } while(distance<=minDist);
-
-                    GoingAway=true;
+                    set_random_goal_location_far_from_option();
                 }
 
                 if(social)
@@ -818,13 +733,13 @@ void random_walk(){
         if( kilo_ticks > last_motion_ticks + max_straight_ticks ) {
             /* perform a radnom turn */
             last_motion_ticks = kilo_ticks;
-            if( rand_soft()%2 ) {
+            if( rand()%2 ) {
                 set_motion(TURN_LEFT);
             }
             else {
                 set_motion(TURN_RIGHT);
             }
-            turning_ticks = rand_soft()%max_turning_ticks + 1;
+            turning_ticks = rand()%max_turning_ticks + 1;
         }
         break;
     case STOP:
@@ -835,9 +750,9 @@ void random_walk(){
 
 
 /*-------------------------------------------------------------------*/
-/* Function to go resample an option                                 */
+/* Function to go to the Goal location (e.g. to resample an option)  */
 /*-------------------------------------------------------------------*/
-void GoToOption(){
+void GoToGoalLocation(){
     if(new_sa_msg_gps){
         new_sa_msg_gps=false;
 
@@ -907,14 +822,6 @@ void GoToOption(){
     }
 }
 
-/*--------------------------------------------------------------------------*/
-/* Function to update the parameters "h" and "k"                            */
-/*--------------------------------------------------------------------------*/
-void update_social_parameters()
-{
-    h=1.0;
-}
-
 /*-------------------------------------------------------------------*/
 /* Function to broadcast the commitment message                     */
 /*-------------------------------------------------------------------*/
@@ -924,8 +831,6 @@ void broadcast() {
         if ( my_option_GPS_X!=0 || my_option_GPS_Y!=0 )
         {
             /* Probabilistically decides to share or not share its commitement*/
-
-            update_social_parameters();
 
             /* drawing a random number */
             int randomInt = RAND_MAX;
@@ -947,7 +852,7 @@ void broadcast() {
                 message.data[0] = my_option_GPS_X;
                 message.data[1] = my_option_GPS_Y;
                 message.data[2] = 1;
-                message.type    = AGENT;
+                message.type    = AGENT_MSG;
                 message.crc     = message_crc(&message);
 
                 /* set broadcast flag for transmission */
@@ -993,7 +898,7 @@ void loop() {
     if(!runtime_identification)
     {
         if(GoingToResampleOption || GoingAway){
-            GoToOption();
+            GoToGoalLocation();
         }
         else{
             random_walk();
