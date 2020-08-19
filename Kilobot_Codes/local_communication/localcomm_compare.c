@@ -561,9 +561,9 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             }
         } else { // runtime identification ended
             kilo_ticks=backup_kiloticks;
-            set_motion(backup_motion);
-            set_color(current_LED_color);
+            //set_color(current_LED_color);
             runtime_identification = false;
+            set_motion(backup_motion);
         }
     }
     /*
