@@ -1,8 +1,8 @@
 #include "kilolib.h"
+//#define DEBUG
+//#include "debug.h"
 #include <stdlib.h>
-#include <stdio.h>
 #include <math.h>
-#include "debug.h"
 #include <float.h>
 
 #define PI 3.14159265
@@ -93,7 +93,14 @@ bool new_sa_msg_gps=false;
 uint8_t Goal_GPS_X;
 uint8_t Goal_GPS_Y;
 bool GoingAway=false;
+uint32_t lastGoingAwayTime;
+uint32_t maxGoingAwayTime=600; // about 20s
 
+/* Wall Avoidance manouvers */
+bool avoidingWall;
+uint32_t wallAvoidanceStart;
+uint32_t wallAvoidanceRotate=100; // about 3s
+uint32_t wallAvoidanceStraight=200; // about 6s
 
 /* Options lookup table*/
 uint8_t options_IDs[20];
@@ -122,6 +129,8 @@ float Robot_FoV;
 float param =0.1;
 
 bool on_option=false;
+
+bool debugState=false;
 
 /*-----------------------------*/
 /*        Step function        */
@@ -322,6 +331,11 @@ void setup()
     /* Intialize time to 0 */
     kilo_ticks=0;
 
+    /* initialise the GSP to the middle of the environment, to avoid to trigger wall avoidance immediately */
+    Robot_GPS_X = GPS_maxcell/2;
+    Robot_GPS_Y = GPS_maxcell/2;
+    avoidingWall=false;
+
 }
 
 /*----------------------------------------------------------------------------------------------------------------*/
@@ -330,11 +344,12 @@ void setup()
 void set_random_goal_location_far_from_option() {
     GoingToResampleOption=false;
     GoingAway=true;
+    lastGoingAwayTime = kilo_ticks;
 
     uint32_t distance=0;
     do {
-        Goal_GPS_X=rand()%( GPS_maxcell-1 );
-        Goal_GPS_Y=rand()%( GPS_maxcell-1 );
+        Goal_GPS_X=rand()%( GPS_maxcell-3 )+1; // getting a random number in the range [1,GPS_maxcell-2] to avoid the border cells (upper bound is -2 because index is from 0)
+        Goal_GPS_Y=rand()%( GPS_maxcell-3 )+1;
 
         distance=sqrt((-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
     } while(distance<=minDist);
@@ -352,6 +367,31 @@ void check_if_my_option_has_disappeared(){
         {
             set_random_goal_location_far_from_option();
         }
+    }
+}
+
+void avoidWall(bool startNow){
+    // start the wall avoidance manouvers
+    if (startNow){
+        GoingAway=false;
+        avoidingWall=true;
+        wallAvoidanceStart = kilo_ticks;
+        /* begin with rotation away from the wall (i.e. towards the centre of the arena) for time wallAvoidanceRotate */
+        double angleToCentre = atan2((GPS_maxcell/2)-Robot_GPS_Y,(GPS_maxcell/2)-Robot_GPS_X)/PI*180-Robot_orientation;
+        NormalizeAngle(&angleToCentre);
+        if (angleToCentre>0) {
+            set_motion(TURN_LEFT);
+        } else {
+            set_motion(TURN_RIGHT);
+        }
+    }
+
+    if (kilo_ticks > wallAvoidanceStart + wallAvoidanceRotate){ // change motion to straight
+        set_motion(FORWARD);
+    }
+
+    if (kilo_ticks > wallAvoidanceStart + wallAvoidanceRotate + wallAvoidanceStraight){ // terminate the wall avoidance manouvers
+        avoidingWall = false;
     }
 }
 
@@ -657,6 +697,8 @@ void update_commitment() {
                     set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
                     Goal_GPS_X=my_option_GPS_X;
                     Goal_GPS_Y=my_option_GPS_Y;
+                    if(GoingAway) { GoingAway=false; }
+                    if(avoidingWall) { avoidingWall=false; }
                     GoingToResampleOption=true;
                 }
             }
@@ -721,10 +763,8 @@ void update_commitment() {
                     set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
                     Goal_GPS_X=my_option_GPS_X;
                     Goal_GPS_Y=my_option_GPS_Y;
-                    if(GoingAway)
-                    {
-                        GoingAway=false;
-                    }
+                    if(GoingAway) { GoingAway=false; }
+                    if(avoidingWall) { avoidingWall=false; }
                     GoingToResampleOption=true;
                 }
             }
@@ -781,18 +821,13 @@ void GoToGoalLocation(){
         //debug_print("My orientation is: %f\n", Robot_orientation);
         //debug_print("In need to turn: %f\n", AngleToGoal() );
 
+        /* if going away and gets close to a wall, it stops the go away manouvers and just move away from the wall */
         if(( (Robot_GPS_X==Goal_GPS_X) &&  (Robot_GPS_Y==Goal_GPS_Y) ) || ( GoingAway && ( Robot_GPS_X==0 || Robot_GPS_X>=GPS_maxcell-1 || Robot_GPS_Y==0 || Robot_GPS_Y>=GPS_maxcell-1 ) ) )
         {
-            //            set_motion(STOP);
-            if( GoingAway){
-                //                set_motion(STOP);
-                GoingAway=false;
-                //            set_motion(FORWARD);
-                //            last_motion_ticks = kilo_ticks+8*max_straight_ticks;
-                //                set_color(RGB(0,0,0));
-                //                debug_print("I reached my goal!\n");
+            if(GoingAway){
+                //GoingAway=false;
+                avoidWall(true);
             }
-            //            set_color(RGB(0,0,0));
         }
         else{
             if(fabs(AngleToGoal()) <= 20)
@@ -841,6 +876,11 @@ void GoToGoalLocation(){
     case STOP:
     default:
         set_motion(STOP);
+    }
+
+    /* after too much time, I interrupt the goAway and I resume the random walk */
+    if (GoingAway && kilo_ticks >= lastGoingAwayTime + maxGoingAwayTime){
+        GoingAway=false;
     }
 }
 
@@ -923,19 +963,31 @@ void loop() {
         if(GoingToResampleOption || GoingAway){
             GoToGoalLocation();
         }
-        else{
-            random_walk();
+        else if (avoidingWall) {
+            avoidWall(false);
+        }
+        else {
+            if ( new_sa_msg_gps && ( Robot_GPS_X==0 || Robot_GPS_X>=GPS_maxcell-1 || Robot_GPS_Y==0 || Robot_GPS_Y>=GPS_maxcell-1 ) ) { // if near to a wall, go away from it
+                avoidWall(true);
+            } else {
+                random_walk();
+            }
         }
 
         update_commitment();
         broadcast();
 
         /* Set LED color*/
-        //    if(GoingToResampleOption || GoingAway){
-        //        set_color(RGB(3,0,0));
-        //    }
-        //    else{
-
+        //if(GoingToResampleOption || GoingAway){
+//        if (debugState){
+//            set_color(RGB(3,3,3));
+//        }
+//        else{
+//        printf("opt:%d q:%d p:(%d,%d)\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y);
+//        int i;
+//        for(i=0;i<number_of_options;i++){
+//            printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
+//        }
         switch( my_commitment ) {
         case 5:
             set_color(RGB(0,3,3));
@@ -953,11 +1005,12 @@ void loop() {
             set_color(RGB(3,0,0));
             break;
         case 0:
-        default:
             set_color(RGB(0,0,0));
             break;
+        default:
+            set_color(RGB(3,3,3));
+            break;
         }
-
     }
 
 }
@@ -969,6 +1022,7 @@ void loop() {
 int main()
 {
     kilo_init();
+//    debug_init();
     kilo_message_tx = message_tx;
     kilo_message_tx_success = tx_message_success;
     kilo_message_rx=message_rx;
