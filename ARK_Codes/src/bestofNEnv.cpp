@@ -26,6 +26,8 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
 
         unsigned int m_message_type;
 
+        uint8_t on_option=0;
+
         if (m_requireGPS[kID]==true)
         { // Update virtual-GPS
 
@@ -43,24 +45,56 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
             orientDegrees=desNormAngle(orientDegrees);
             //                        qDebug() << kID << orientDegrees;
 
-            msg.id=kID<<2 | m_message_type<<1 | ( (uint8_t) GPS_cords.x() ) >> 4;
+
+
+
+            if(m_Single_Discovery[kID]!=0 && m_optionStillThere[kID])
+            {
+                on_option = 1;
+            }
+
+
+            msg.id= kID<<2 | on_option <<1 |m_message_type;
             msg.type= ( (uint8_t) GPS_cords.x() ) & 0x0F;
-            msg.data= ( (uint8_t) ( 31-GPS_cords.y() )  ) << 5 | ( (uint8_t) (orientDegrees/12.0) );
+
+
+            msg.data= ( (uint8_t) ( 31-GPS_cords.y() )  ) << 6 | ( (uint8_t) (orientDegrees/12.0) );
             MessagingQueue[kID].push_back(msg);
+            //qDebug() << "Sending GPS (" << GPS_cords.x() << "," << 31-GPS_cords.y() << ")[o:"<<on_option<<"] to robot " << kID;
             m_requireGPS[kID]=false;
+
+
+            //            msg.id=kID<<2 | m_message_type<<1 | ( (uint8_t) GPS_cords.x() ) >> 4;
+            //            msg.type= ( (uint8_t) GPS_cords.x() ) & 0x0F;
+            //            msg.data= ( (uint8_t) ( 31-GPS_cords.y() )  ) << 5 | ( (uint8_t) (orientDegrees/12.0) );
+            //            MessagingQueue[kID].push_back(msg);
+            //            m_requireGPS[kID]=false;
         }
 
-        if(m_Single_Discovery[kID]!=0)
-        { // Update wall virtual-sensor
+        if(m_Single_Discovery[kID]!=0 && m_optionStillThere[kID])
+        {
+            // Update option virtual-sensor
             m_message_type=1;
-            msg.id=kID<<2 | m_message_type<<1 |( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_X )>>4 ;
+
+            on_option = 1;
+            //qDebug() << "Sending discovery " << m_Single_Discovery[kID] << " to robot " << kID;
+            msg.id= kID<<2 | on_option <<1 |m_message_type;
             msg.type= ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_X ) & 0x0F;
-            msg.data= ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_Y ) << 5 | ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].quality );
+            msg.data= ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_Y ) << 6 | ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].quality );
             MessagingQueue[kID].push_back(msg);
             m_Single_Discovery[kID]=0;
-        }
 
+
+
+//            msg.id=kID<<2 | m_message_type<<1 |( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_X )>>4 ;
+//            msg.type= ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_X ) & 0x0F;
+//            msg.data= ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].GPS_Y ) << 5 | ( (uint8_t) m_Options[m_Single_Discovery[kID]-1].quality );
+//            MessagingQueue[kID].push_back(msg);
+//            m_Single_Discovery[kID]=0;
+        }
     }
+
+
     /*
         if (m_requireGPS[kID]==true)
         { // Update virtual-GPS
@@ -101,9 +135,10 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
     }
     */
 
-
+    //qDebug() << "m_TimeForUpdatingVirtualSensors " << m_TimeForUpdatingVirtualSensors << " MessagingQueue[kID].size=" << MessagingQueue[kID].size() << " and for kID " << kID << " UpdateMessagingQueue[kID]=" << UpdateMessagingQueue[kID];
     if(m_TimeForUpdatingVirtualSensors && !MessagingQueue[kID].empty())
     {
+        //qDebug()<<"Sending message " << MessagingQueue[kID].front().type << ", " << MessagingQueue[kID].front().data;
         emit transmitKiloState(MessagingQueue[kID].front());
         MessagingQueue[kID].pop_front();
     }
@@ -123,8 +158,17 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
         //Check if the robot is inside an option for discovery
         if((pow(kPos.x()-x,2)+pow(kPos.y()-y,2)) < pow(rad,2) )
         {
-            m_Single_Discovery[kID]=Op.ID;
-            m_VirtualSensorsNeedUpdate=true;
+            if(this->m_time>=Op.AppearanceTime && (this->m_time<Op.DisappearanceTime||Op.DisappearanceTime<=0)){
+                m_Single_Discovery[kID]=Op.ID;
+                m_VirtualSensorsNeedUpdate=true;
+                m_optionStillThere[kID]=true;
+            }
+            else
+            {
+                m_Single_Discovery[kID]=Op.ID;
+                m_VirtualSensorsNeedUpdate=true;
+                m_optionStillThere[kID]=false;
+            }
         }
     }
 

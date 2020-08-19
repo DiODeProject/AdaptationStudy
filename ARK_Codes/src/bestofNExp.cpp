@@ -259,10 +259,32 @@ void mykilobotexperiment::initialise(bool isResume) {
         //        QString log_filename = log_filename_prefix + "_" + QDate::currentDate().toString("yyMMdd") + "_" + QTime::currentTime().toString("hhmmss") + ".txt";
         log_file.setFileName( log_filename );
         if ( !log_file.open(QIODevice::WriteOnly) ) { // open file
-            qDebug() << "ERROR(!) in opening file" << log_filename;
+            qDebug() << "ERROR(!) in opening file " << log_filename;
         } else {
-            qDebug () << "Log file" << log_file.fileName() << "opened.";
+            qDebug () << "Log file " << log_file.fileName() << " opened.";
             log_stream.setDevice(&log_file);
+        }
+
+        /* save the option positions and behaviour in another file */
+        QFile log_opts_file;
+        QString log_opts_filename = log_foldername+log_opts_filename_suffix;
+        log_opts_file.setFileName( log_opts_filename );
+        if ( !log_opts_file.open(QIODevice::WriteOnly) ) { // open file
+            qDebug() << "ERROR(!) in opening file " << log_opts_filename;
+        } else {
+            QTextStream log_opts_stream;
+            log_opts_stream.setDevice(&log_opts_file);
+            log_opts_stream << m_optionsEnv.m_Options.size();
+            for (int i = 0; i < m_optionsEnv.m_Options.size(); ++i){
+                option op = m_optionsEnv.m_Options[i];
+                log_opts_stream << "\t" << op.ID << "\t" << op.posX << "\t" << op.posY
+                           << "\t" << op.GPS_X << "\t" << op.GPS_Y << "\t" << op.rad << "\t"
+                           << op.AppearanceTime << "\t" << op.DisappearanceTime << "\t"
+                           << op.QualityChangeTime << "\t" << op.QualityAfterChange;
+            }
+            log_opts_stream << endl;
+            log_opts_file.close();
+            qDebug() << "Saved option info in file " << log_opts_filename;
         }
     }
 
@@ -281,7 +303,7 @@ void mykilobotexperiment::initialise(bool isResume) {
         log_stream << this->m_time;
         for (int i = 0; i < allKiloIDs.size(); ++i){
             kilobot_id kID = allKiloIDs[i];
-            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y();
+            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
         }
         log_stream << endl;
     }
@@ -316,20 +338,29 @@ void mykilobotexperiment::run()
         kilobot_broadcast msg;
         msg.type=10; // Configuration message
         msg.data.resize(9);
-        msg.data[0]= m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].ID;
-        msg.data[1]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_X;
-        msg.data[2]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_Y;
-        msg.data[3]= (uint8_t) (m_Quality_noise_variance*10);
-        msg.data[4]= 16;    // max cell
-        msg.data[5]= 4;    // min distance
-        msg.data[6]= 5;    // number of attacker
+        msg.data[0]= m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].ID; // OP ID
+        msg.data[1]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_X; // OP X
+        msg.data[2]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_Y; // OP Y
+        msg.data[3]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].rad*100; // robot field of view to detect disappearance
+        msg.data[4]= 4; // min distance to go away
 
+        if(initial_opinion!=0)
+        {
+            msg.data[5]= (uint8_t) initial_opinion;    // initial opinion
+            msg.data[6]= m_optionsEnv.m_Options[initial_opinion-1].quality;  // initial opinion quality
+            msg.data[7]= m_optionsEnv.m_Options[initial_opinion-1].GPS_X;    // initial opinion X
+            msg.data[8]= m_optionsEnv.m_Options[initial_opinion-1].GPS_Y;    // initial opinion Y
+        }
 
-        qDebug() << "Sending Config Msg No." << m_NumberOfConfigMsgsSent;
-        qDebug() << "data[0]=" << msg.data[0];
-        qDebug() << "data[1]=" << msg.data[1];
-        qDebug() << "data[2]=" << msg.data[2];
-        qDebug() << "data[3]=" << msg.data[3];
+//        qDebug() << "Sending Config Msg No." << m_NumberOfConfigMsgsSent;
+//        qDebug() << "data[0]=" << msg.data[0];
+//        qDebug() << "data[1]=" << msg.data[1];
+//        qDebug() << "data[2]=" << msg.data[2];
+//        qDebug() << "data[3]=" << msg.data[3];
+//        qDebug() << "data[4]=" << msg.data[4];
+//        qDebug() << "data[5]=" << msg.data[5];
+//        qDebug() << "data[6]=" << msg.data[6];
+//        qDebug() << "data[7]=" << msg.data[7];
 
         emit broadcastMessage(msg);
 
@@ -363,6 +394,7 @@ void mykilobotexperiment::run()
             // Increment time
             if(!m_data_retrieval_running){
                 this->m_time=ElapsedTime.elapsed()/1000.0; // 100 ms in sec
+                m_optionsEnv.m_time=this->m_time;
             }
 
             // Update Kilobot States:
@@ -380,7 +412,7 @@ void mykilobotexperiment::run()
                     log_stream << this->m_time;
                     for (int i = 0; i < allKiloIDs.size(); ++i){
                         kilobot_id kID = allKiloIDs[i];
-                        log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y();
+                        log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
                     }
                     log_stream << endl;
                 }
@@ -418,6 +450,7 @@ void mykilobotexperiment::run()
 
                     if((m_optionsEnv.m_VirtualSensorsNeedUpdate) && !broadcasing
                             && !StopSpeakingMsgSent && !m_optionsEnv.m_TimeForUpdatingVirtualSensors )
+
                     { // if it is time to update virtual-sensors and there is things to update for at least one robot
 
                         //qDebug() << "Sending Stop speaking message";
@@ -496,6 +529,7 @@ void mykilobotexperiment::setupInitialKilobotState(Kilobot kilobotCopy) {
     {
         allKilos.resize(kID+1);
         m_optionsEnv.m_Single_Discovery.resize(kID+1);
+        m_optionsEnv.m_optionStillThere.resize(kID+1);
         m_optionsEnv.m_prev_discovery.resize(kID+1);
         m_optionsEnv.m_wall_detected.resize(kID+1);
         m_optionsEnv.m_requireGPS.resize(kID+1);
@@ -566,11 +600,11 @@ void mykilobotexperiment::setupEnvironments( )
         //            Op.quality=m_Difficulty*m_HighestQuality;
         //        }
 
-        if( i == 3 )
+        if( i == 1 )
         {
             Op.quality=8.0;
             Op.AppearanceTime=0.0;
-            Op.DisappearanceTime=30.0;
+            Op.DisappearanceTime=1200.0;
             Op.QualityChangeTime=0.0;
             Op.QualityAfterChange=0.0;
             Op.color=QColor(255,0,0);
@@ -581,16 +615,16 @@ void mykilobotexperiment::setupEnvironments( )
             Op.quality=6.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=10.0;
+            Op.QualityChangeTime=2400.0;
             Op.QualityAfterChange=4.0;
             Op.color=QColor(0,255,0);
         }
-        else if ( i == 1)
+        else if ( i == 3)
         {
             Op.quality=4.0;
             Op.AppearanceTime=0.0;
             Op.DisappearanceTime=0.0;
-            Op.QualityChangeTime=10.0;
+            Op.QualityChangeTime=2400.0;
             Op.QualityAfterChange=6.0;
             Op.color=QColor(0,0,255);
         }
@@ -616,9 +650,11 @@ void mykilobotexperiment::setupEnvironments( )
 }
 
 // Draw the options:
-void mykilobotexperiment::plotEnvironment() {
+void mykilobotexperiment::plotEnvironment()
+{
     option Op;
-    for(int i=0;i<m_optionsEnv.m_Options.size();i++){
+    for(int i=0;i<m_optionsEnv.m_Options.size();i++)
+    {
 
         Op=m_optionsEnv.m_Options[i];
 

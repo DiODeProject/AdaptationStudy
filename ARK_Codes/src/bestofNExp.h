@@ -127,6 +127,7 @@ private:
     QFile log_file;
     QString log_filename_prefix="/home/salah/Francesco/run%1";
     QString log_filename_suffix="/log_bestof3.txt";
+    QString log_opts_filename_suffix="/log_optionPositionAndQuality.txt";
     QTextStream log_stream;
     QVector < kilobot_id >  allKiloIDs;
     QVector <KiloLog> allKilos;
@@ -153,17 +154,19 @@ private:
     float m_HighestQuality=8.0;
     float m_OptionsRadius=0.20;
     float m_Quality_noise_variance=1.0;
-    int m_Xoffset=-500;
-    int m_Yoffset=500;
-    float m_PolygoneRadius=0.25;
+    int m_Xoffset=-550;
+    int m_Yoffset=470;
+    float m_PolygoneRadius=0.285;
 
     float Trobot=5.0;
     float Trobot_last=0.0;
 
     QTime ElapsedTime;
     QTime RTID_ElapsedTime;
+
+
+    uint8_t initial_opinion=2;
+
 };
-
-
 
 #endif // TESTLIB_H

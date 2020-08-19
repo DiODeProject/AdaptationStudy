@@ -46,6 +46,9 @@ public:
     QPoint PositionToGPS(QPointF position);
     float desNormAngle(float angle);
 
+    // Current time (necessary to check about disappearance)
+    float m_time;
+
     // A vector containing the options
     QVector <option> m_Options;
 
@@ -55,6 +58,7 @@ public:
     // Discovery variables
     bool m_VirtualSensorsNeedUpdate=false;
     QVector <unsigned int> m_Single_Discovery;
+    QVector <unsigned int> m_optionStillThere;
     QVector < QVector <unsigned int> > m_Multi_Discovery;
 
     QVector <unsigned int> m_prev_discovery;

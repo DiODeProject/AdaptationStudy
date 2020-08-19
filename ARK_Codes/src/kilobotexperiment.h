@@ -402,6 +402,7 @@ signals:
     void signalKilobot(kilobot_message);
     void broadcastMessage(kilobot_broadcast);
     void setTrackingType(int);
+    void sendBroadcastingState(bool);
 
     // drawing
     void drawCircle(QPointF pos, float r, QColor col, int thickness, std::string text, bool transparent=false);
@@ -422,6 +423,7 @@ public slots:
                                           }
     void InformDataRetrievalProcessAboutRobotsColors(std::vector<lightColour>&);
     void AllMsgsSent(){ ThereIsMsgsToSend=false;}
+    void GetMsgsQueueState(bool state){ ThereIsMsgsToSend=state;}
 
 
     /*!

@@ -524,7 +524,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             }
         }
     }
-    else if (msg->type == 1) {
+    else if (msg->type == 10) {
         // Options lookup table
         options_IDs[number_of_options] = msg->data[0];
         options_GPS_X[number_of_options] = msg->data[1];
