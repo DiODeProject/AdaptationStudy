@@ -1,6 +1,6 @@
 #include "kilolib.h"
-//#define DEBUG
-//#include "debug.h"
+#define DEBUG
+#include "debug.h"
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
@@ -94,7 +94,7 @@ uint8_t Goal_GPS_X;
 uint8_t Goal_GPS_Y;
 bool GoingAway=false;
 uint32_t lastGoingAwayTime;
-uint32_t maxGoingAwayTime=600; // about 20s
+uint32_t maxGoingAwayTime=900; // about 30s
 
 /* Wall Avoidance manouvers */
 bool avoidingWall;
@@ -103,9 +103,9 @@ uint32_t wallAvoidanceRotate=100; // about 3s
 uint32_t wallAvoidanceStraight=200; // about 6s
 
 /* Options lookup table*/
-uint8_t options_IDs[20];
-uint8_t options_GPS_X[20];
-uint8_t options_GPS_Y[20];
+uint8_t options_IDs[10];
+uint8_t options_GPS_X[10];
+uint8_t options_GPS_Y[10];
 uint8_t number_of_options=0;
 
 bool GoingToResampleOption=false;
@@ -348,8 +348,8 @@ void set_random_goal_location_far_from_option() {
 
     uint32_t distance=0;
     do {
-        Goal_GPS_X=rand()%( GPS_maxcell-3 )+1; // getting a random number in the range [1,GPS_maxcell-2] to avoid the border cells (upper bound is -2 because index is from 0)
-        Goal_GPS_Y=rand()%( GPS_maxcell-3 )+1;
+        Goal_GPS_X=rand()%( GPS_maxcell-4 )+2; // getting a random number in the range [2,GPS_maxcell-3] to avoid the border cells (upper bound is -3 because index is from 0)
+        Goal_GPS_Y=rand()%( GPS_maxcell-4 )+2;
 
         distance=sqrt((-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
     } while(distance<=minDist);
@@ -411,14 +411,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             // unpack type
             sa_type = (msg->data[1] >> 6) & 0x01;
 
-            if(sa_type==0)
+            if(sa_type==0) // type 0 is GPS data
             {
                 // get on_option flag
                 on_option = msg->data[1] >> 7;
 
                 // unpack payload
                 Robot_GPS_X = msg->data[1]>>2 & 0x0F;
-                Robot_GPS_Y = (msg->data[1] & 0x03) << 2 | msg->data[2]>>6 ;
+                Robot_GPS_Y = (msg->data[1] & 0x03) << 2 | (msg->data[2]>>6) ;
                 Robot_orientation = (msg->data[2] & 0x3F)*12;
 
                 NormalizeAngle(&Robot_orientation);
@@ -427,14 +427,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 check_if_my_option_has_disappeared();
             }
-            else{
+            else{  // otherwise it's discovery
 
                 // get on_option flag
                 on_option = msg->data[1] >> 7;
 
                 // unpack payload
                 discovered_option_GPS_X = msg->data[1]>>2 & 0x0F;
-                discovered_option_GPS_Y = (msg->data[1] & 0x03)<< 2 | msg->data[2]>>6 ;
+                discovered_option_GPS_Y = (msg->data[1] & 0x03)<< 2 | (msg->data[2]>>6) ;
                 discovered_option_mean_quality = (msg->data[2] & 0x0F);
 
                 new_sa_msg_discovery = true;
@@ -445,14 +445,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             // unpack type
             sa_type = (msg->data[4] >> 6) & 0x01;
 
-            if(sa_type==0)
+            if(sa_type==0) // type 0 is GPS data
             {
                 // get on_option flag
                 on_option = msg->data[4] >> 7;
 
                 // unpack payload
                 Robot_GPS_X = msg->data[4]>>2 & 0x0F;
-                Robot_GPS_Y = (msg->data[4] & 0x03) << 2 | msg->data[5]>>6 ;
+                Robot_GPS_Y = (msg->data[4] & 0x03) << 2 | (msg->data[5]>>6) ;
                 Robot_orientation = (msg->data[5] & 0x3F)*12;
 
                 NormalizeAngle(&Robot_orientation);
@@ -461,14 +461,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 check_if_my_option_has_disappeared();
             }
-            else{
+            else{ // otherwise it's discovery
 
                 // get on_option flag
                 on_option = msg->data[4] >> 7;
 
                 // unpack payload
                 discovered_option_GPS_X = msg->data[4]>>2 & 0x0F;
-                discovered_option_GPS_Y = (msg->data[4] & 0x03)<< 2 | msg->data[5]>>6 ;
+                discovered_option_GPS_Y = (msg->data[4] & 0x03)<< 2 | (msg->data[5]>>6) ;
                 discovered_option_mean_quality = (msg->data[5] & 0x0F);
 
                 new_sa_msg_discovery = true;
@@ -479,14 +479,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             // unpack type
             sa_type = (msg->data[7] >> 6) & 0x01;
 
-            if(sa_type==0)
+            if(sa_type==0) // type 0 is GPS data
             {
                 // get on_option flag
                 on_option = msg->data[7] >> 7;
 
                 // unpack payload
                 Robot_GPS_X = msg->data[7]>>2 & 0x0F;
-                Robot_GPS_Y = (msg->data[7] & 0x03) << 2 | msg->data[8]>>6 ;
+                Robot_GPS_Y = (msg->data[7] & 0x03) << 2 | (msg->data[8]>>6) ;
                 Robot_orientation = (msg->data[8] & 0x3F)*12;
 
                 NormalizeAngle(&Robot_orientation);
@@ -495,14 +495,14 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
                 check_if_my_option_has_disappeared();
             }
-            else{
+            else{ // otherwise it's discovery
 
                 // get on_option flag
                 on_option = msg->data[7] >> 7;
 
                 // unpack payload
                 discovered_option_GPS_X = msg->data[7]>>2 & 0x0F;
-                discovered_option_GPS_Y = (msg->data[7] & 0x03)<< 2 | msg->data[8]>>6 ;
+                discovered_option_GPS_Y = (msg->data[7] & 0x03)<< 2 | (msg->data[8]>>6) ;
                 discovered_option_mean_quality = (msg->data[8] & 0x0F);
 
                 new_sa_msg_discovery = true;
@@ -983,11 +983,12 @@ void loop() {
 //            set_color(RGB(3,3,3));
 //        }
 //        else{
-//        printf("opt:%d q:%d p:(%d,%d)\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y);
-//        int i;
-//        for(i=0;i<number_of_options;i++){
-//            printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
-//        }
+        printf("opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d)\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y);
+        int i;
+        for(i=0;i<number_of_options;i++){
+            printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
+        }
+        if (number_of_options==3){
         switch( my_commitment ) {
         case 5:
             set_color(RGB(0,3,3));
@@ -1011,6 +1012,15 @@ void loop() {
             set_color(RGB(3,3,3));
             break;
         }
+        }
+        else{
+            if (number_of_options<3){
+                set_color(RGB(3,0,3));
+            }
+            if (number_of_options>3){
+                set_color(RGB(3,3,3));
+            }
+        }
     }
 
 }
@@ -1022,7 +1032,7 @@ void loop() {
 int main()
 {
     kilo_init();
-//    debug_init();
+    debug_init();
     kilo_message_tx = message_tx;
     kilo_message_tx_success = tx_message_success;
     kilo_message_rx=message_rx;

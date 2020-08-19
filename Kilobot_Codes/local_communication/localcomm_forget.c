@@ -94,19 +94,12 @@ uint8_t Goal_GPS_X;
 uint8_t Goal_GPS_Y;
 bool GoingAway=false;
 uint32_t lastGoingAwayTime;
-uint32_t maxGoingAwayTime=600; // about 20s
-
-/* Robot Goal variables*/
-uint8_t Goal_GPS_X;
-uint8_t Goal_GPS_Y;
-bool GoingAway=false;
-uint32_t lastGoingAwayTime;
-uint32_t maxGoingAwayTime=600; // about 20s
+uint32_t maxGoingAwayTime=900; // about 30s
 
 /* Options lookup table*/
-uint8_t options_IDs[20];
-uint8_t options_GPS_X[20];
-uint8_t options_GPS_Y[20];
+uint8_t options_IDs[10];
+uint8_t options_GPS_X[10];
+uint8_t options_GPS_Y[10];
 uint8_t number_of_options=0;
 
 bool GoingToResampleOption=false;
