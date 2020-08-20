@@ -602,149 +602,149 @@ void sample_option_quality(){
 /* Function for updating the commitment state (wrt to the received message) */
 /*--------------------------------------------------------------------------*/
 void update_commitment() {
-    if(runtime_identification) { return; }
-        /* Updating the commitment only each update_ticks */
-        if( kilo_ticks > last_update_ticks + update_ticks ) {
-            last_update_ticks = kilo_ticks;
-            /* drawing a random number */
-            int randomInt = RAND_MAX;
-            while (randomInt > 30000){
-                randomInt = rand();
-            }
-            unsigned int RANGE_RND = 10000;
-            unsigned int random = randomInt % RANGE_RND + 1;
+	if(runtime_identification) { return; }
+	/* Updating the commitment only each update_ticks */
+	if( kilo_ticks > last_update_ticks + update_ticks ) {
+		last_update_ticks = kilo_ticks;
+		/* drawing a random number */
+		int randomInt = RAND_MAX;
+		while (randomInt > 30000){
+			randomInt = rand();
+		}
+		unsigned int RANGE_RND = 10000;
+		unsigned int random = randomInt % RANGE_RND + 1;
 
-            /* if the agent is uncommitted, it can do discovery or recruitment */
-            if ( my_option_GPS_X==0 && my_option_GPS_Y==0){
+		/* if the agent is uncommitted, it can do discovery or recruitment */
+		if ( my_option_GPS_X==0 && my_option_GPS_Y==0){
 
-                double P_discovery;
-                bool social=false;
-                bool individual=false;
+			double P_discovery;
+			bool social=false;
+			bool individual=false;
 
-                /* compute the transition probabilities as a fucntion of the estimated qualities */
-                /* discovery is only possible if the robot has virtually sensed an option (via ARK) */
-                if (discovered){
-                    P_discovery = discovered_option_quality / 100.0;
-                } else {
-                    P_discovery = 0;
-                }
+			/* compute the transition probabilities as a fucntion of the estimated qualities */
+			/* discovery is only possible if the robot has virtually sensed an option (via ARK) */
+			if (discovered){
+				P_discovery = discovered_option_quality / 100.0;
+			} else {
+				P_discovery = 0;
+			}
 
-                unsigned int P_discoveryInt = (unsigned int)(P_discovery*RANGE_RND)+1;
-                /* DISCOVERY */
-                if (P_discovery > 0 && random <= P_discoveryInt)
-                {
-                    individual=true;
-                }
+			unsigned int P_discoveryInt = (unsigned int)(P_discovery*RANGE_RND)+1;
+			/* DISCOVERY */
+			if (P_discovery > 0 && random <= P_discoveryInt)
+			{
+				individual=true;
+			}
 
-                /* RECRUITMENT*/
-                if (received_message && ( (received_option_GPS_X!=0) || (received_option_GPS_Y!=0) ))
-                {
-                    social=true;
-                }
+			/* RECRUITMENT*/
+			if (received_message && ( (received_option_GPS_X!=0) || (received_option_GPS_Y!=0) ))
+			{
+				social=true;
+			}
 
-                if(individual&&social)
-                {
-                    if(rand()%2==0)
-                    {
-                        individual=true;
-                        social=false;
-                    }
-                    else{
-                        individual=false;
-                        social=true;
-                    }
-                }
+			if(individual&&social)
+			{
+				if(rand()%2==0)
+				{
+					individual=true;
+					social=false;
+				}
+				else{
+					individual=false;
+					social=true;
+				}
+			}
 
-                if(individual)
-                {
-                    /* the agent discovers a new option */
-                    set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
+			if(individual)
+			{
+				/* the agent discovers a new option */
+				set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
 
-                    /* Go away from the discovered option */
-                    set_random_goal_location_far_from_option();
-                }
+				/* Go away from the discovered option */
+				set_random_goal_location_far_from_option();
+			}
 
-                if(social)
-                {
-                    /* the agent discovers a new option*/
-                    set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
-                    Goal_GPS_X=my_option_GPS_X;
-                    Goal_GPS_Y=my_option_GPS_Y;
-                    if(GoingAway) { GoingAway=false; }
-                    if(avoidingWall) { avoidingWall=false; }
-                    GoingToResampleOption=true;
-                }
-            }
-            /* if the agent is committed */
-            else {
+			if(social)
+			{
+				/* the agent discovers a new option*/
+				set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
+				Goal_GPS_X=my_option_GPS_X;
+				Goal_GPS_Y=my_option_GPS_Y;
+				if(GoingAway) { GoingAway=false; }
+				if(avoidingWall) { avoidingWall=false; }
+				GoingToResampleOption=true;
+			}
+		}
+		/* if the agent is committed */
+		else {
 
-                double P_comparing;
+			double P_comparing;
 
-                bool social=false;
-                bool individual=false;
+			bool social=false;
+			bool individual=false;
 
-                if (discovered)
-                {
-                    P_comparing = (discovered_option_quality / 100.0)*step(discovered_option_quality/100.0-my_option_quality/100.0-param);
-                }
-                else
-                {
-                    P_comparing = 0;
-                }
+			if (discovered)
+			{
+				P_comparing = (discovered_option_quality / 100.0)*step(discovered_option_quality/100.0-my_option_quality/100.0-param);
+			}
+			else
+			{
+				P_comparing = 0;
+			}
 
-                unsigned int P_comparingInt = (unsigned int)(P_comparing*RANGE_RND)+1;
+			unsigned int P_comparingInt = (unsigned int)(P_comparing*RANGE_RND)+1;
 
-                /* COMPARE */
-                if (P_comparing > 0 && random <= P_comparingInt)
-                {
-                    individual=true;
-                }
+			/* COMPARE */
+			if (P_comparing > 0 && random <= P_comparingInt)
+			{
+				individual=true;
+			}
 
-                /* Direct-switch */
-                if(received_message && (received_option_GPS_X!=0) && (received_option_GPS_Y!=0) && ( (my_option_GPS_X!=received_option_GPS_X) || (my_option_GPS_Y!=received_option_GPS_Y) ) )
-                {
-                    social=true;
-                }
+			/* Direct-switch */
+			if(received_message && (received_option_GPS_X!=0) && (received_option_GPS_Y!=0) && ( (my_option_GPS_X!=received_option_GPS_X) || (my_option_GPS_Y!=received_option_GPS_Y) ) )
+			{
+				social=true;
+			}
 
 
-                if(individual&&social)
-                {
-                    if(rand()%2==0)
-                    {
-                        individual=true;
-                        social=false;
-                    }
-                    else
-                    {
-                        individual=false;
-                        social=true;
-                    }
-                }
+			if(individual&&social)
+			{
+				if(rand()%2==0)
+				{
+					individual=true;
+					social=false;
+				}
+				else
+				{
+					individual=false;
+					social=true;
+				}
+			}
 
-                if(individual)
-                {
-                    /* the agent switch to the new (and better) discovered option */
-                    set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
+			if(individual)
+			{
+				/* the agent switch to the new (and better) discovered option */
+						set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
 
-                    /* Go away from the discovered option */
-                    set_random_goal_location_far_from_option();
-                }
+				/* Go away from the discovered option */
+						set_random_goal_location_far_from_option();
+			}
 
-                if(social)
-                {
-                    /* the agent discovers a new option*/
-                    set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
-                    Goal_GPS_X=my_option_GPS_X;
-                    Goal_GPS_Y=my_option_GPS_Y;
-                    if(GoingAway) { GoingAway=false; }
-                    if(avoidingWall) { avoidingWall=false; }
-                    GoingToResampleOption=true;
-                }
-            }
+			if(social)
+			{
+				/* the agent discovers a new option*/
+				set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
+				Goal_GPS_X=my_option_GPS_X;
+				Goal_GPS_Y=my_option_GPS_Y;
+				if(GoingAway) { GoingAway=false; }
+				if(avoidingWall) { avoidingWall=false; }
+				GoingToResampleOption=true;
+			}
+		}
 
-            received_message = false;
-            discovered = false;
-        }
+		received_message = false;
+		discovered = false;
+	}
 }
 
 
