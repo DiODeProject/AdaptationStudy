@@ -81,7 +81,8 @@ unsigned int sa_payload = 0;
 bool new_sa_msg_discovery = false;
 
 /* Noise variables */
-double variance=0.1;
+//double variance=0.1;
+double standard_deviation=0.316227766; // this is the sqrt(0.1)
 
 /* Robot GPS variables */
 uint8_t Robot_GPS_X;
@@ -135,7 +136,6 @@ bool debugState=false;
 /*-----------------------------*/
 /*        Step function        */
 /*-----------------------------*/
-
 unsigned int step(float x){
     if (x>=0)
     {
@@ -148,15 +148,14 @@ unsigned int step(float x){
 }
 
 
-
 /*-------------------------------------------------------------------*/
-/* Function to generate a random nuber from a gaussian               */
+/* Function to sample a random number form a Gaussian distribution   */
 /*-------------------------------------------------------------------*/
-double generateGaussianNoise(double mu, double variance )
+double generateGaussianNoise(double mu, double std_dev )
 {
     const double epsilon = DBL_MIN;
-    const double two_pi = 2.0*3.14159265358979323846;
-    double sigma=sqrt(variance);
+    const double two_pi = 2.0*PI;
+    // double sigma=sqrt(variance);
     //        double z1;
     //        bool generate;
     //        generate = !generate;
@@ -174,7 +173,7 @@ double generateGaussianNoise(double mu, double variance )
     double z0;
     z0 = sqrt(-2.0 * log(u1)) * cos(two_pi * u2);
     //        z1 = sqrt(-2.0 * log(u1)) * sin(two_pi * u2);
-    return z0 * sigma + mu;
+    return z0 * std_dev + mu;
 }
 
 
@@ -183,10 +182,10 @@ double generateGaussianNoise(double mu, double variance )
 /*-------------------------------------------------------------------*/
 void NormalizeAngle(double* angle)
 {
-    if(*angle>180){
+    while(*angle>180){
         *angle=*angle-360;
     }
-    if(*angle<-180){
+    while(*angle<-180){
         *angle=*angle+360;
     }
 }
@@ -196,6 +195,7 @@ void NormalizeAngle(double* angle)
 /* Compute angle to Goal                                             */
 /*-------------------------------------------------------------------*/
 double AngleToGoal() {
+	NormalizeAngle(&Robot_orientation);
     double angletogoal=atan2(Goal_GPS_Y-Robot_GPS_Y,Goal_GPS_X-Robot_GPS_X)/PI*180-Robot_orientation;
     NormalizeAngle(&angletogoal);
     return angletogoal;
@@ -359,12 +359,11 @@ void set_random_goal_location_far_from_option() {
 /* Function to check if the option has disappeared (to call at each GSP reading) */
 /*-------------------------------------------------------------------------------*/
 void check_if_my_option_has_disappeared(){
-    if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter<Robot_FoV && !on_option)
+    if(sqrt((Robot_GPS_X-my_option_GPS_X)*(Robot_GPS_X-my_option_GPS_X)+(Robot_GPS_Y-my_option_GPS_Y)*(Robot_GPS_Y-my_option_GPS_Y))*GPS_To_Meter < Robot_FoV && !on_option)
     {
         my_option_quality=0;
 
-        if(GoingToResampleOption)
-        {
+        if(GoingToResampleOption) {
             set_random_goal_location_far_from_option();
         }
     }
@@ -400,7 +399,8 @@ void avoidWall(bool startNow){
 /* Callback function for message reception                           */
 /*-------------------------------------------------------------------*/
 void message_rx( message_t *msg, distance_measurement_t *d ) {
-    if (msg->type == 0) {
+    /** ARK MESSAGE **/
+	if (msg->type == 0) {
         // unpack message
         int id1 = msg->data[0];
         int id2 = msg->data[3];
@@ -421,11 +421,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                 Robot_GPS_Y = (msg->data[1] & 0x03) << 2 | (msg->data[2]>>6) ;
                 Robot_orientation = (msg->data[2] & 0x3F)*12;
 
-                NormalizeAngle(&Robot_orientation);
-
                 new_sa_msg_gps = true;
-
-                check_if_my_option_has_disappeared();
             }
             else{  // otherwise it's discovery
 
@@ -455,11 +451,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                 Robot_GPS_Y = (msg->data[4] & 0x03) << 2 | (msg->data[5]>>6) ;
                 Robot_orientation = (msg->data[5] & 0x3F)*12;
 
-                NormalizeAngle(&Robot_orientation);
-
                 new_sa_msg_gps = true;
-
-                check_if_my_option_has_disappeared();
             }
             else{ // otherwise it's discovery
 
@@ -489,11 +481,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
                 Robot_GPS_Y = (msg->data[7] & 0x03) << 2 | (msg->data[8]>>6) ;
                 Robot_orientation = (msg->data[8] & 0x3F)*12;
 
-                NormalizeAngle(&Robot_orientation);
-
                 new_sa_msg_gps = true;
-
-                check_if_my_option_has_disappeared();
             }
             else{ // otherwise it's discovery
 
@@ -509,6 +497,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             }
         }
     }
+	/** ARK Config File **/
     else if (msg->type == 10) {
         // Options lookup table
 
@@ -521,7 +510,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             minDist=msg->data[4];
             my_commitment=msg->data[5];
 
-            discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],variance) ) );
+            discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],standard_deviation) ) );
             if(discovered_option_quality>100){
                 discovered_option_quality=100;
             }
@@ -536,6 +525,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             number_of_options++;
         }
     }
+	/** ARK ID identification **/
     else if (msg->type == 120) {
         int id = (msg->data[0] << 8) | msg->data[1];
         if (id == kilo_uid) {
@@ -544,14 +534,11 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             set_color(RGB(3,0,0));
         }
     }
-    /*
-    *  Runtime identification messages
-    */
+	/** ARK Runtime identification **/
     else if (msg->type == 119) {
         // runtime identification
         int id = (msg->data[0] << 8) | msg->data[1];
         if (id >= 0){ // runtime identification ongoing
-            backup_kiloticks=kilo_ticks;
             set_motion(STOP);
             runtime_identification = true;
             if (id == kilo_uid) {
@@ -566,17 +553,15 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             set_motion(backup_motion);
         }
     }
-    /*
-     *  Speaking enable/disable messages
-     */
+	/** ARK Disable robot broadcasting **/
     else if (msg->type == 5) {
         broadcast_flag=false;
     }
-
+	/** ARK Enable robot broadcasting **/
     else if (msg->type == 6) {
         broadcast_flag=true;
     }
-
+	/** Message from another robot **/
     else if (msg->type == AGENT_MSG) {
         // the received message is from another KB
         received_option_GPS_X = msg->data[0];
@@ -584,42 +569,32 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
         received_message = (bool) msg->data[2];
     }
 
-    if (new_sa_msg_discovery == true) {
-        new_sa_msg_discovery = false;
-        discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( discovered_option_mean_quality,variance) ) );
-        if(discovered_option_quality>100){
-            discovered_option_quality=100;
-        }
-        if(discovered_option_quality<0){
-            discovered_option_quality=0;
-        }
-
-        if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) )
-        {
-            set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality);
-
-            if(GoingToResampleOption)
-            {
-                set_random_goal_location_far_from_option();
-            }
-            return;
-        }
-
-        discovered = on_option;
-    }
-
 }
 
+/*-----------------------------------------------------------------------------------------------------------------------------*/
+/* Function to sample the quality value (with Gaussian noise applied to the virtual sensor 'perfect' reading).                 *
+ * Updating the quality if it's my option, otherwise setting to true the discovery flag to be used in the update_commitment()  */
+/*-----------------------------------------------------------------------------------------------------------------------------*/
+void sample_option_quality(){
+	new_sa_msg_discovery = false;
+	discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( discovered_option_mean_quality,standard_deviation) ) );
+	if(discovered_option_quality>100){
+		discovered_option_quality=100;
+	}
+	if(discovered_option_quality<0){
+		discovered_option_quality=0;
+	}
 
-/*--------------------------------------------------------------------------*/
-/* Function to normalise the quality from range [0,100] to range [0,255]    */
-/*--------------------------------------------------------------------------*/
-uint8_t normaliseQuality(uint8_t quality)
-{
-    double norm_quality = quality * 2.56;
-    uint8_t norm_quality_ui = (uint8_t)(norm_quality);
-    if (norm_quality > 255){ norm_quality_ui = 255; } //special case for quality = 100.
-    return norm_quality_ui;
+	if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) ) {
+		set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality);
+
+		if(GoingToResampleOption)
+		{
+			set_random_goal_location_far_from_option();
+		}
+	} else {
+		discovered = on_option;
+	}
 }
 
 
@@ -627,8 +602,7 @@ uint8_t normaliseQuality(uint8_t quality)
 /* Function for updating the commitment state (wrt to the received message) */
 /*--------------------------------------------------------------------------*/
 void update_commitment() {
-    if(true)
-    {
+    if(runtime_identification) { return; }
         /* Updating the commitment only each update_ticks */
         if( kilo_ticks > last_update_ticks + update_ticks ) {
             last_update_ticks = kilo_ticks;
@@ -687,7 +661,6 @@ void update_commitment() {
                     set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
 
                     /* Go away from the discovered option */
-
                     set_random_goal_location_far_from_option();
                 }
 
@@ -772,8 +745,6 @@ void update_commitment() {
             received_message = false;
             discovered = false;
         }
-    }
-
 }
 
 
@@ -830,23 +801,23 @@ void GoToGoalLocation(){
             }
         }
         else{
-            if(fabs(AngleToGoal()) <= 20)
+        	double angleToGoal = AngleToGoal();
+            if(fabs(angleToGoal) <= 20)
             {
-
                 set_motion(FORWARD);
                 last_motion_ticks = kilo_ticks;
             }
             else{
-                if(AngleToGoal()>0){
+                if(angleToGoal>0){
                     set_motion(TURN_LEFT);
                     last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/RotSpeed*32.0 );
+                    turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
                     //                    debug_print("In need to turn left for: %d\n", turning_ticks );
                 }
                 else{
                     set_motion(TURN_RIGHT);
                     last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(AngleToGoal())/RotSpeed*32.0 );
+                    turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
                     //                    debug_print("In need to turn right for: %d\n", turning_ticks );
                 }
             }
@@ -931,6 +902,7 @@ void broadcast() {
             broadcast_msg = false;
         }
     }
+    if (runtime_identification || !broadcast_flag) { broadcast_msg = false; }
 }
 
 
@@ -960,6 +932,15 @@ void loop() {
 
     if(!runtime_identification)
     {
+    	backup_kiloticks=kilo_ticks; // which we restore in after runtime_identification
+
+    	if (new_sa_msg_discovery == true) {
+    		sample_option_quality();
+    	}
+    	if (new_sa_msg_gps == true) {
+    		check_if_my_option_has_disappeared();
+    	}
+
         if(GoingToResampleOption || GoingAway){
             GoToGoalLocation();
         }

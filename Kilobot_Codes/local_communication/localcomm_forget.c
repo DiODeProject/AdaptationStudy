@@ -5,7 +5,7 @@
 #include "debug.h"
 #include <float.h>
 
-#define PI 3.14159265
+#define PI 3.14159265358979323846
 
 #define UNCOMMITTED 0
 //#define OPT_BLUE 1
@@ -81,7 +81,7 @@ unsigned int sa_payload = 0;
 bool new_sa_msg_discovery = false;
 
 /* Noise variables */
-double variance=0.1;
+double standard_deviation=0.316227766; // this is the sqrt of variance=0.1
 
 /* Robot GPS variables */
 uint8_t Robot_GPS_X;
@@ -95,6 +95,12 @@ uint8_t Goal_GPS_Y;
 bool GoingAway=false;
 uint32_t lastGoingAwayTime;
 uint32_t maxGoingAwayTime=900; // about 30s
+
+/* Wall Avoidance manouvers */
+bool avoidingWall;
+uint32_t wallAvoidanceStart;
+uint32_t wallAvoidanceRotate=100; // about 3s
+uint32_t wallAvoidanceStraight=200; // about 6s
 
 /* Options lookup table*/
 uint8_t options_IDs[10];
@@ -143,11 +149,11 @@ unsigned int step(float x){
 /*-------------------------------------------------------------------*/
 /* Function to generate a random nuber from a gaussian               */
 /*-------------------------------------------------------------------*/
-double generateGaussianNoise(double mu, double variance )
+double generateGaussianNoise(double mu, double std_dev )
 {
     const double epsilon = DBL_MIN;
-    const double two_pi = 2.0*3.14159265358979323846;
-    double sigma=sqrt(variance);
+    const double two_pi = 2.0*PI;
+    // double sigma=sqrt(variance);
     //        double z1;
     //        bool generate;
     //        generate = !generate;
@@ -165,7 +171,7 @@ double generateGaussianNoise(double mu, double variance )
     double z0;
     z0 = sqrt(-2.0 * log(u1)) * cos(two_pi * u2);
     //        z1 = sqrt(-2.0 * log(u1)) * sin(two_pi * u2);
-    return z0 * sigma + mu;
+    return z0 * std_dev + mu;
 }
 
 
@@ -507,7 +513,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             minDist=msg->data[4];
             my_commitment=msg->data[5];
 
-            discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],variance) ) );
+            discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],standard_deviation) ) );
             if(discovered_option_quality>100){
                 discovered_option_quality=100;
             }
@@ -571,7 +577,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
     if (new_sa_msg_discovery == true) {
         new_sa_msg_discovery = false;
-        discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( discovered_option_mean_quality,variance) ) );
+        discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( discovered_option_mean_quality,standard_deviation) ) );
         if(discovered_option_quality>100){
             discovered_option_quality=100;
         }
