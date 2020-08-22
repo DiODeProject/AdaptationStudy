@@ -222,7 +222,7 @@ void mykilobotexperiment::initialise(bool isResume) {
 
     //qDebug() << "Entered initializatioN%%%%";
     // Initialize variables
-    m_DataRetrieval_ON=true;
+    m_DataRetrieval_ON=false;
     m_log_period=1;
     m_optionsEnv.m_TimeForUpdatingVirtualSensors=false;
     m_optionsEnv.m_fCellLength=2000.0/m_optionsEnv.m_unGpsCells;
