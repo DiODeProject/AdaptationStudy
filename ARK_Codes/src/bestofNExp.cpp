@@ -647,7 +647,8 @@ void mykilobotexperiment::setupEnvironments( )
         m_optionsEnv.m_Options.push_back(Op);
     }
 
-    plotEnvironment();
+    m_optionsEnv.update(); // update the dynamic (virtual) environment
+    plotEnvironment(); // plot the (virtual) environment
 }
 
 // Draw the options:
@@ -656,27 +657,10 @@ void mykilobotexperiment::plotEnvironment()
     option Op;
     for(int i=0;i<m_optionsEnv.m_Options.size();i++)
     {
-
         Op=m_optionsEnv.m_Options[i];
 
-        if(m_optionsEnv.m_Options[i].QualityChangeTime!= 0.0
-                && m_time >= m_optionsEnv.m_Options[i].QualityChangeTime
-                && !m_optionsEnv.m_Options[i].QualityChangeApplied)
+        if( Op.DisappearanceTime==0 || m_time < Op.DisappearanceTime)
         {
-            m_optionsEnv.m_Options[i].QualityChangeApplied = true;
-
-            qDebug() << "Option " << i+1 << "had quality "<< m_optionsEnv.m_Options[i].quality;
-
-            m_optionsEnv.m_Options[i].quality=m_optionsEnv.m_Options[i].QualityAfterChange;
-
-            qDebug() << "now its quality is" << m_optionsEnv.m_Options[i].quality;
-        }
-
-        if(Op.DisappearanceTime!=0 && m_time>=Op.DisappearanceTime)
-        {
-
-        }
-        else{
             drawCircle(QPointF(Op.posX, Op.posY),Op.rad, Op.color, 8,"",true);
         }
     }

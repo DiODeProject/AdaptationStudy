@@ -980,7 +980,7 @@ void loop() {
 //            set_color(RGB(3,3,3));
 //        }
 //        else{
-        printf("opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d) dbg:[%zu,%d,%d]\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y,debug_lastTableUpdate,debug_lastAssignedID,debug_lastSource);
+        printf("[t.%lu] opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d) dbg:[%lu,%d,%d]\n",kilo_ticks,my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y,debug_lastTableUpdate,debug_lastAssignedID,debug_lastSource);
         int i;
         for(i=0;i<number_of_options;i++){
             printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);

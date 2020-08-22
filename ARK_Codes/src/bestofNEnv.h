@@ -79,7 +79,7 @@ signals:
     void errorMessage(QString);
 
 public slots:
-    void update(){}
+    void update();
     void updateVirtualSensor(Kilobot kilobot);
 
 private:
