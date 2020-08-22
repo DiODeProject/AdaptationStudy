@@ -131,7 +131,10 @@ float param =0.1;
 
 bool on_option=false;
 
-bool debugState=false;
+bool debug_state=false;
+uint32_t debug_lastTableUpdate = 0;
+uint8_t debug_lastAssignedID = 0;
+uint8_t debug_lastSource = 0;
 
 /*-----------------------------*/
 /*        Step function        */
@@ -290,6 +293,7 @@ void set_commitment( uint8_t new_option_GPS_X, uint8_t new_option_GPS_Y, uint8_t
     my_option_GPS_Y = new_option_GPS_Y;
     my_option_quality = new_quality;
     my_commitment=CoordsToID(new_option_GPS_X,new_option_GPS_Y);
+    debug_lastAssignedID=my_commitment;
 }
 
 
@@ -509,6 +513,8 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 
             minDist=msg->data[4];
             my_commitment=msg->data[5];
+            debug_lastSource=77;
+            debug_lastTableUpdate=kilo_ticks;
 
             discovered_option_quality = (uint8_t) ( 10 * (  generateGaussianNoise( msg->data[6],standard_deviation) ) );
             if(discovered_option_quality>100){
@@ -585,16 +591,22 @@ void sample_option_quality(){
 		discovered_option_quality=0;
 	}
 
-	if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) ) {
-		set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality);
+        if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) ) // re-sampling
+        {
+            set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality); // updating the quality with the latest estimated value
+            debug_lastSource=99;
 
-		if(GoingToResampleOption)
-		{
-			set_random_goal_location_far_from_option();
-		}
-	} else {
-		discovered = on_option;
-	}
+            if(GoingToResampleOption) {
+                set_random_goal_location_far_from_option(); // after 'forced' resampling the robot go far to spread the opinion
+            }
+            discovered = false;
+        } else { // inside a site different from my_commitment
+            if (GoingToResampleOption){
+                discovered = false; // if going to re-sample my (new) commitment, do not make discovery
+            } else {
+                discovered = true; // discovery will be possible in the next update_commitment()
+            }
+        }
 }
 
 
@@ -659,6 +671,7 @@ void update_commitment() {
 			{
 				/* the agent discovers a new option */
 				set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
+                                debug_lastSource = 10;
 
 				/* Go away from the discovered option */
 				set_random_goal_location_far_from_option();
@@ -666,8 +679,9 @@ void update_commitment() {
 
 			if(social)
 			{
-				/* the agent discovers a new option*/
+                                /* the agent gets recruited a new option*/
 				set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
+                                debug_lastSource = 20;
 				Goal_GPS_X=my_option_GPS_X;
 				Goal_GPS_Y=my_option_GPS_Y;
 				if(GoingAway) { GoingAway=false; }
@@ -721,25 +735,27 @@ void update_commitment() {
 				}
 			}
 
-			if(individual)
-			{
-				/* the agent switch to the new (and better) discovered option */
-						set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
+                        if(individual)
+                        {
+                                /* the agent switch to the new (and better) discovered option */
+                                set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
+                                debug_lastSource = 1;
 
-				/* Go away from the discovered option */
-						set_random_goal_location_far_from_option();
-			}
+                                /* Go away from the discovered option */
+                                set_random_goal_location_far_from_option();
+                        }
 
-			if(social)
-			{
-				/* the agent discovers a new option*/
-				set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
-				Goal_GPS_X=my_option_GPS_X;
-				Goal_GPS_Y=my_option_GPS_Y;
-				if(GoingAway) { GoingAway=false; }
-				if(avoidingWall) { avoidingWall=false; }
-				GoingToResampleOption=true;
-			}
+                        if(social)
+                        {
+                                /* the agent gets recruited a new option*/
+                                set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
+                                debug_lastSource = 2;
+                                Goal_GPS_X=my_option_GPS_X;
+                                Goal_GPS_Y=my_option_GPS_Y;
+                                if(GoingAway) { GoingAway=false; }
+                                if(avoidingWall) { avoidingWall=false; }
+                                GoingToResampleOption=true;
+                        }
 		}
 
 		received_message = false;
@@ -964,7 +980,7 @@ void loop() {
 //            set_color(RGB(3,3,3));
 //        }
 //        else{
-        printf("opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d)\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y);
+        printf("opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d) dbg:[%zu,%d,%d]\n",my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y,debug_lastTableUpdate,debug_lastAssignedID,debug_lastSource);
         int i;
         for(i=0;i<number_of_options;i++){
             printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
@@ -996,10 +1012,18 @@ void loop() {
         }
         else{
             if (number_of_options<3){
-                set_color(RGB(3,0,3));
+                set_color(RGB(3,0,3)); // purple
             }
             if (number_of_options>3){
-                set_color(RGB(3,3,3));
+                if (debug_lastSource==77){
+                    set_color(RGB(3,3,0)); // yellow
+                } else {
+                    if (my_commitment==0) {
+                        set_color(RGB(3,3,3)); // white
+                    } else {
+                        set_color(RGB(0,3,3)); // ciano
+                    }
+                }
             }
         }
     }

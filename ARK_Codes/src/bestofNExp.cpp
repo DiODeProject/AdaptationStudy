@@ -337,6 +337,7 @@ void mykilobotexperiment::run()
 
         kilobot_broadcast msg;
         msg.type=10; // Configuration message
+        qDebug() << "*************************************** BROADCAST MSG 10 ***************************************";
         msg.data.resize(9);
         msg.data[0]= m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].ID; // OP ID
         msg.data[1]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_X; // OP X
