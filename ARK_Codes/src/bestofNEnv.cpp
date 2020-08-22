@@ -13,12 +13,11 @@ mykilobotenvironment::mykilobotenvironment(QObject *parent) : KilobotEnvironment
 // Update the dynamic environment:
 void mykilobotenvironment::update() {
     for(int i=0; i<m_Options.size(); ++i) {
-        if (!m_Options[i].QualityChangeApplied && m_Options[i].QualityChangeTime != 0.0 && m_time >= m_Options[i].QualityChangeTime)
+        if (!m_Options[i].QualityChangeApplied && m_Options[i].QualityChangeTime != 0.0 && this->m_time >= m_Options[i].QualityChangeTime)
         {
-            qDebug() << "**** QUALITY CHANGE **** Option " << i+1 << "had quality "<< m_Options[i].quality;
+            qDebug() << "**** QUALITY CHANGE **** Option " << i+1 << "had quality "<< m_Options[i].quality << ", now its quality is" << m_Options[i].QualityAfterChange;
             m_Options[i].quality=m_Options[i].QualityAfterChange;
             m_Options[i].QualityChangeApplied = true;
-            qDebug() << "now its quality is" << m_Options[i].quality;
         }
     }
 }

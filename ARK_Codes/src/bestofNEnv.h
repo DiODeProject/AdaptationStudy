@@ -46,7 +46,7 @@ public:
     QPoint PositionToGPS(QPointF position);
     float desNormAngle(float angle);
 
-    // Current time (necessary to check about disappearance)
+    // Current time (necessary to check about disappearance and quality swap)
     float m_time;
 
     // A vector containing the options

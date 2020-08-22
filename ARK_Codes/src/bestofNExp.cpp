@@ -501,7 +501,9 @@ void mykilobotexperiment::run()
                 }
             }
 
+            m_optionsEnv.update(); // update the dynamic (virtual) environment
 
+            /* plot virtual environment */
             clearDrawings();
             clearDrawingsOnRecordedImage();
             plotEnvironment();
@@ -647,8 +649,7 @@ void mykilobotexperiment::setupEnvironments( )
         m_optionsEnv.m_Options.push_back(Op);
     }
 
-    m_optionsEnv.update(); // update the dynamic (virtual) environment
-    plotEnvironment(); // plot the (virtual) environment
+    plotEnvironment();
 }
 
 // Draw the options:
