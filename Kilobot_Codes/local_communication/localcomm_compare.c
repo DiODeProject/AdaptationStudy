@@ -5,7 +5,7 @@
 #include <math.h>
 #include <float.h>
 
-#define PI 3.14159265
+#define PI 3.14159265358979323846
 
 #define UNCOMMITTED 0
 //#define OPT_BLUE 1
@@ -948,14 +948,14 @@ void loop() {
 
     if(!runtime_identification)
     {
-    	backup_kiloticks=kilo_ticks; // which we restore in after runtime_identification
+        backup_kiloticks=kilo_ticks; // which we restore in after runtime_identification
 
-    	if (new_sa_msg_discovery == true) {
-    		sample_option_quality();
-    	}
-    	if (new_sa_msg_gps == true) {
-    		check_if_my_option_has_disappeared();
-    	}
+        if (new_sa_msg_discovery == true) {
+            sample_option_quality();
+        }
+        if (new_sa_msg_gps == true) {
+            check_if_my_option_has_disappeared();
+        }
 
         if(GoingToResampleOption || GoingAway){
             GoToGoalLocation();
@@ -986,6 +986,7 @@ void loop() {
             printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
         }
         if (number_of_options==3){
+        if (true){
         switch( my_commitment ) {
         case 5:
             set_color(RGB(0,3,3));
@@ -1008,6 +1009,13 @@ void loop() {
         default:
             set_color(RGB(3,3,3));
             break;
+        }
+        } else { // debug kilobot states
+            if (GoingToResampleOption){ set_color(RGB(3,0,0)); } //red
+            if (GoingAway){ set_color(RGB(0,0,3)); } //blue
+            if (avoidingWall){ set_color(RGB(0,3,0)); } //green
+            if ( (avoidingWall&&GoingToResampleOption) || (avoidingWall&&GoingAway)  || (GoingToResampleOption&&GoingAway) ){ set_color(RGB(3,3,3)); } //white
+            if ( !avoidingWall && !GoingToResampleOption && !GoingAway) { set_color(RGB(0,0,0)); } //black
         }
         }
         else{
