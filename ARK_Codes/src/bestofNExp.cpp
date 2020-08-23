@@ -278,7 +278,7 @@ void mykilobotexperiment::initialise(bool isResume) {
             for (int i = 0; i < m_optionsEnv.m_Options.size(); ++i){
                 option op = m_optionsEnv.m_Options[i];
                 log_opts_stream << "\t" << op.ID << "\t" << op.posX << "\t" << op.posY
-                           << "\t" << op.GPS_X << "\t" << op.GPS_Y << "\t" << op.rad << "\t"
+                           << "\t" << op.GPS_X << "\t" << op.GPS_Y << "\t" << op.rad << "\t" << op.quality << "\t"
                            << op.AppearanceTime << "\t" << op.DisappearanceTime << "\t"
                            << op.QualityChangeTime << "\t" << op.QualityAfterChange;
             }
@@ -300,6 +300,7 @@ void mykilobotexperiment::initialise(bool isResume) {
     //log initial state of the robots
     if (logExp)
     {
+        m_last_log=m_time;
         log_stream << this->m_time;
         for (int i = 0; i < allKiloIDs.size(); ++i){
             kilobot_id kID = allKiloIDs[i];
@@ -396,15 +397,21 @@ void mykilobotexperiment::run()
             if(!m_data_retrieval_running){
                 this->m_time=ElapsedTime.elapsed()/1000.0; // 100 ms in sec
                 m_optionsEnv.m_time=this->m_time;
+                if (qRound((m_time-m_last_log2)*10.0f) >= 60*10.0f) { // every minute
+                    m_last_log2=m_time;
+                    qDebug() << "Running time: " << this->m_time <<" at " << QLocale("en_GB").toString( QDateTime::currentDateTime(), "hh:mm:ss.zzz");
+                }
             }
 
             // Update Kilobot States:
             emit updateKilobotStates();
 
-            //Save image and log data once every second
-            if (qRound(m_time*10.0f) % qRound(m_log_period*10.0f) == 0)
+            //Save image and log data once every m_log_period seconds
+            //if (qRound(m_time*10.0f) % qRound(m_log_period*10.0f) == 0)
+            if (qRound((m_time-m_last_log)*10.0f) >= m_log_period*10.0f)
 
-            { // every 1s
+            { // every m_log_period
+                m_last_log=m_time;
                 if (saveImages) {
                     emit saveImage(im_filename_prefix.arg(m_expno,1)+im_filename_suffix.arg(savedImagesCounter++, 5,10, QChar('0')));
                 }

@@ -120,7 +120,7 @@ private:
 
     //Logging period in seconds
     float m_log_period;
-
+    float m_last_log=0, m_last_log2=0;
 
     //Log variables
     bool logExp;
