@@ -582,7 +582,6 @@ void sample_option_quality(){
         if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) ) // re-sampling
         {
             set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality); // updating the quality with the latest estimated value
-            debug_lastSource=99;
 
             if(GoingToResampleOption) {
                 set_random_goal_location_far_from_option(); // after 'forced' resampling the robot go far to spread the opinion
@@ -665,7 +664,7 @@ void update_commitment() {
 
                 if(social)
                 {
-                    /* the agent discovers a new option*/
+                    /* the agent gets recruited a new option*/
                     set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
                     Goal_GPS_X=my_option_GPS_X;
                     Goal_GPS_Y=my_option_GPS_Y;
@@ -725,7 +724,7 @@ void update_commitment() {
 
                 if(social)
                 {
-                    /* the agent discovers a new option*/
+                    /* the agent gets recruited a new option*/
                     set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
                     Goal_GPS_X=my_option_GPS_X;
                     Goal_GPS_Y=my_option_GPS_Y;
