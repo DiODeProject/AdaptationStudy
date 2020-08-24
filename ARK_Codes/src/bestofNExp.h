@@ -137,7 +137,7 @@ private:
 
     // Configuration messages
     bool configurationMsgsSent=false;
-    unsigned int m_NumberOfConfigMsgsSent=0;
+    int m_NumberOfConfigMsgsSent=0;
     bool RobotSpeaking=false;
 
 

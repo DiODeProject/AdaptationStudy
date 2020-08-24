@@ -575,12 +575,12 @@ void mykilobotexperiment::setupEnvironments( )
 
     QVector<int> RandPosCopy,RandPos;
 
-    for(int i=1; i<=m_NumberOfOptions ; i++)
+    for(size_t i=1; i<=m_NumberOfOptions ; i++)
     {
         RandPosCopy.push_back(i);
     }
 
-    for(int i=1; i<=m_NumberOfOptions ; i++)
+    for(size_t i=1; i<=m_NumberOfOptions ; i++)
     {
         int rand=qrand()%m_NumberOfOptions;
 
@@ -596,7 +596,7 @@ void mykilobotexperiment::setupEnvironments( )
 
     option Op;
 
-    for(int i=1; i<=m_NumberOfOptions ; i++)
+    for(size_t i=1; i<=m_NumberOfOptions ; i++)
     {
 
         Op.ID=i;

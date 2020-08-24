@@ -126,11 +126,11 @@ public:
                     if (m_retrieved_digits > (m_NumOfDigits-1)) {
 
                         // compute retreived data;
-                        for(int i=0;i<m_retrieved_data.size();i++){
+                        for(size_t i=0;i<m_retrieved_data.size();i++){
 
                             m_retrieved_data[i]=0;
 
-                            for(int j=0;j<m_robots_responses.size();j++){
+                            for(size_t j=0;j<m_robots_responses.size();j++){
                                 if(m_robots_responses[j][i]!=OFF){
                                     int digit_value;
                                     if(m_robots_responses[j][i]==RED){
@@ -235,6 +235,9 @@ public:
 
                 break;
             }
+            case SEND:
+            case RETRY:
+                break;
                 /*
             case SEND:
             {
@@ -363,7 +366,7 @@ public:
     bool m_confirmation;
 
     bool confirmationrequestsent;
-    int increment=0;
+    size_t increment=0;
 
     QElapsedTimer t;
 
