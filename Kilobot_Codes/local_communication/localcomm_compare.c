@@ -109,6 +109,15 @@ uint8_t options_GPS_X[10];
 uint8_t options_GPS_Y[10];
 uint8_t number_of_options=0;
 
+/* Global communication variables */
+uint8_t redBots;
+uint8_t greenBots;
+uint8_t blueBots;
+uint8_t redQ;
+uint8_t greenQ;
+uint8_t blueQ;
+bool new_sa_msg_global_comm=false;
+
 bool GoingToResampleOption=false;
 
 /* RTID variables */
@@ -198,7 +207,7 @@ void NormalizeAngle(double* angle)
 /* Compute angle to Goal                                             */
 /*-------------------------------------------------------------------*/
 double AngleToGoal() {
-	NormalizeAngle(&Robot_orientation);
+    NormalizeAngle(&Robot_orientation);
     double angletogoal=atan2(Goal_GPS_Y-Robot_GPS_Y,Goal_GPS_X-Robot_GPS_X)/PI*180-Robot_orientation;
     NormalizeAngle(&angletogoal);
     return angletogoal;
@@ -218,6 +227,19 @@ uint8_t CoordsToID(uint8_t option_GPS_X,uint8_t option_GPS_Y)
         }
     }
     return UNCOMMITTED;
+}
+
+/*-------------------------------------------------------------------*/
+/* Option ID to coordinates   (101 means 'ID not found')             */
+/*-------------------------------------------------------------------*/
+uint8_t IdToCoords(uint8_t id) {
+    uint8_t i;
+    for(i=0;i<number_of_options;i++){
+        if( options_IDs[i]==id ) {
+            return i;
+        }
+    }
+    return 101;
 }
 
 /*-------------------------------------------------------------------*/
@@ -397,7 +419,94 @@ void avoidWall(bool startNow){
         avoidingWall = false;
     }
 }
+/*-------------------------------------------------------------------*/
+/* Simulating the receiption of another robot's message              */
+/*-------------------------------------------------------------------*/
+void update_virtual_global_communication() {
+    new_sa_msg_global_comm=false;
 
+    /* remove myself from the robot count */
+    switch( my_commitment ) {
+    case 1:
+        if (redBots>0){ redBots = redBots-1; }
+        break;
+    case 2:
+        if (blueBots>0){ blueBots = blueBots-1; }
+        break;
+    case 3:
+        if (greenBots>0){ greenBots=greenBots-1; }
+        break;
+    default: break;
+    }
+
+    /* compute the number of robots signalling each option (i.e., number of robots by their broadcast probability) */
+    double P_red   = redBots   * redQ   / 100.0;
+    double P_green = greenBots * greenQ / 100.0;
+    double P_blue  = blueBots  * blueQ  / 100.0;
+
+    /* normalise each subpopulation by the signalling population size */
+    double communicatingBots = P_red + P_green + P_blue;
+    if (communicatingBots > 0){
+        P_red = P_red/communicatingBots;
+        P_green = P_green/communicatingBots;
+        P_blue = P_blue/communicatingBots;
+    } else {
+        /* no communication made by any robot */
+        P_red=0; P_green=0; P_blue=0;
+        received_option_GPS_X = 0;
+        received_option_GPS_Y = 0;
+        received_message = false;
+        return;
+    }
+
+    /* draw a random number */
+    int randomInt = RAND_MAX;
+    while (randomInt > 30000){
+            randomInt = rand();
+    }
+    unsigned int RANGE_RND = 10000;
+    unsigned int random = randomInt % RANGE_RND;
+
+    /* convert the probability to int, in order to compare it with rand() int values */
+    unsigned int P_redInt   = (unsigned int)(P_red  *RANGE_RND);
+    unsigned int P_greenInt = (unsigned int)(P_green*RANGE_RND);
+    unsigned int P_blueInt  = (unsigned int)(P_blue *RANGE_RND);
+
+    printf("msg info: o:[%d, %d, %d] q:(%d,%d,%d)\n",redBots,greenBots,blueBots,redQ,greenQ,blueQ);
+    printf("Probs: o:[%u, %u, %u] random:%d\n",P_redInt,P_greenInt,P_blueInt,random);
+
+    uint8_t selectedOptID=0;
+    if (P_red > 0 && random <= P_redInt) { /* virtually received a red message */
+        selectedOptID = 1;
+        //set_color(RGB(0,3,0));
+    } else {
+        if (P_green > 0 && random <= (P_redInt+P_greenInt) ){ /* virtually received a green message */
+            selectedOptID = 3;
+            //set_color(RGB(0,3,0));
+        } else {
+            if (P_blue > 0 && random <= (P_redInt+P_greenInt+P_blueInt) ){ /* virtually received a blue message */
+                selectedOptID = 2;
+                //set_color(RGB(0,3,0));
+            } else { /* this case should not happen */
+                received_message = false;
+                //set_color(RGB(0,3,3));
+                return;
+            }
+        }
+    }
+
+    uint8_t idx = IdToCoords(selectedOptID);
+    if (idx > 100){ /* this case should not happen */
+        received_message = false;
+        //set_color(RGB(3,3,0));
+        return;
+    } else {
+        received_option_GPS_X = options_GPS_X[idx];
+        received_option_GPS_Y = options_GPS_Y[idx];
+        received_message = true;
+    }
+
+}
 
 /*-------------------------------------------------------------------*/
 /* Callback function for message reception                           */
@@ -566,6 +675,16 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
 	/** ARK Enable robot broadcasting **/
     else if (msg->type == 6) {
         broadcast_flag=true;
+    }
+        /** ARK Virtualisation of global communication by sending the population sizes **/
+    else if (msg->type == 7) {
+        redBots = msg->data[0];
+        greenBots = msg->data[1];
+        blueBots = msg->data[2];
+        redQ = msg->data[3];
+        greenQ = msg->data[4];
+        blueQ = msg->data[5];
+        new_sa_msg_global_comm=true;
     }
 	/** Message from another robot **/
     else if (msg->type == AGENT_MSG) {
@@ -949,6 +1068,10 @@ void loop() {
     if(!runtime_identification)
     {
         backup_kiloticks=kilo_ticks; // which we restore in after runtime_identification
+
+        if (new_sa_msg_global_comm == true) {
+            update_virtual_global_communication();
+        }
 
         if (new_sa_msg_discovery == true) {
             sample_option_quality();
