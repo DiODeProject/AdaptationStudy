@@ -323,9 +323,9 @@ void mykilobotexperiment::initialise(bool isResume) {
         }
     }
     for (int i = 0; i < m_optionsEnv.kiloGroupForMessaging.size(); ++i){
-        qDebug() << "In group" << i << "there are the"<< m_optionsEnv.kiloGroupForMessaging.at(i).size()<<"ids:";
+        //qDebug() << "In group" << i << "there are the"<< m_optionsEnv.kiloGroupForMessaging.at(i).size()<<"ids:";
         for (int j = 0; j < m_optionsEnv.kiloGroupForMessaging.at(i).size(); ++j){
-            qDebug() << m_optionsEnv.kiloGroupForMessaging.at(i).at(j);
+            //qDebug() << m_optionsEnv.kiloGroupForMessaging.at(i).at(j);
         }
     }
 
@@ -339,6 +339,10 @@ void mykilobotexperiment::stopExperiment() {
         log_file.close();
     }
     m_optionsEnv.m_Options.clear();
+    m_optionsEnv.msgGroup=0;
+    m_optionsEnv.kiloGroupForMessaging.clear();
+    m_optionsEnv.goingResamplingList.clear();
+    previousColourList.clear();
     m_NumberOfConfigMsgsSent=0;
     RobotSpeaking=true;
     configurationMsgsSent=false;
@@ -540,19 +544,20 @@ void mykilobotexperiment::updateKilobotState(Kilobot kilobotCopy) {
         allKilos[kID].updateAllValues(kID, kPos, 0, kColor);
     }
 
+    //qDebug()<<kID;
     // update counters used for vitualising global communication
     lightColour commitment = kColor;
     if (commitment==OFF){ // if the tracker detects an OFF led, we use the previous detected colour (as in the compare method there are no uncommitted)
         commitment = previousColourList[kID];
     } else {
         // if the robot changed opinion it needs resampling (except if it is already within the option)
-        if ( previousColourList[kID] != commitment && commitment!=OFF) {
+        if ( previousColourList[kID] != commitment && commitment!=OFF && previousColourList[kID]!=OFF) { // I use previousColourList[kID]!=OFF to avoid to initially cast all robots as needed resampling
             /* check if already within option, in this case, (we assume) no resamplind would be needed */
             unsigned int oidx = m_optionsEnv.indexOptOfColour(commitment);
             int idx=-1;
             for (int i=0;i<m_optionsEnv.m_Options.size();i++ ) { if (m_optionsEnv.m_Options[i].ID==oidx) {idx=i;} }
             /* if not in the option area, set goingResamplingList[kID]=true */
-            m_optionsEnv.goingResamplingList[kID] = !(idx>=0 && (pow(kPos.x()-m_optionsEnv.m_Options[idx].posX,2)+pow(kPos.y()-m_optionsEnv.m_Options[idx].posY,2)) < pow(-m_optionsEnv.m_Options[idx].rad,2) );
+            m_optionsEnv.goingResamplingList[kID] = !(idx>=0 && (pow(kPos.x()-m_optionsEnv.m_Options[idx].posX,2)+pow(kPos.y()-m_optionsEnv.m_Options[idx].posY,2)) < pow(m_optionsEnv.m_Options[idx].rad,2) );
         }
         previousColourList[kID] = commitment;
     }

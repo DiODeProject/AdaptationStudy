@@ -69,7 +69,6 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
             }
         }
     }
-    
     if (OhcBufferIsEmpty && kiloGroupForMessaging.at(msgGroup).contains(kID)) { // only send messages when the kID is in the assigned group
 
         kilobot_message msg;

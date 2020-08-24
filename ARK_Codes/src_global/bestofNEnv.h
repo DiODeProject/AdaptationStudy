@@ -52,18 +52,16 @@ public:
     // Global communication variables
     QVector <bool> goingResamplingList;
     unsigned int indexOptOfColour(lightColour kColor);
+    bool OhcBufferIsEmpty=true;
+    int msgGroup;
+    QVector<QVector<kilobot_id> > kiloGroupForMessaging;
 
     // GPS variables
     unsigned int m_unGpsCells=32;
     float m_fCellLength=0;
 
     // Wall avoidance variables
-    QVector <bool> m_wall_detected;
-
-    // Message Queue
-    bool OhcBufferIsEmpty=true;
-    int msgGroup;
-    QVector<QVector<kilobot_id> > kiloGroupForMessaging;
+    QVector <bool> m_wall_detected;    
 
 signals:
     void errorMessage(QString);
