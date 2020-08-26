@@ -290,6 +290,8 @@ void mykilobotexperiment::initialise(bool isResume) {
     savedImagesCounter = 0;
     this->m_time = 0;
     ElapsedTime.start();
+    RTID_elapsedTime=0;
+    RTID_wasActive=0;
 
     //save initial image
     if (saveImages) {
@@ -297,8 +299,7 @@ void mykilobotexperiment::initialise(bool isResume) {
     }
 
     //log initial state of the robots
-    if (logExp)
-    {
+    if (logExp) {
         m_last_log=m_time;
         log_stream << this->m_time;
         for (int i = 0; i < allKiloIDs.size(); ++i){
@@ -415,10 +416,15 @@ void mykilobotexperiment::run()
     {
 
         if(!this->runtimeIdentificationLock){
+            // keep track of the time spent in RTID
+            if (RTID_wasActive==RTID_periodOfStoppedActivityAfterActive) { // this means this is the first timestep after active RTID
+                RTID_elapsedTime += RTID_timer.elapsed();
+                qDebug() << "RTID was active for a total of " << RTID_elapsedTime << "ms in the whole experiment.";
+            }
 
             // Increment time
             if(!m_data_retrieval_running){
-                this->m_time=ElapsedTime.elapsed()/1000.0; // 100 ms in sec
+                this->m_time=(ElapsedTime.elapsed() - RTID_elapsedTime)/1000.0; // time in seconds
                 m_optionsEnv.m_time=this->m_time;
                 if (qRound((m_time-m_last_log2)*10.0f) >= 60*10.0f) { // every minute
                     m_last_log2=m_time;
@@ -426,28 +432,34 @@ void mykilobotexperiment::run()
                 }
             }
 
-            // Reset population counters (which are counted in updateKilobotState()
-            countRed=0;countGreen=0;countBlue=0;countOff=0;
-            // Update Kilobot States
-            emit updateKilobotStates();
+            if (RTID_wasActive==0) {
+                // Reset population counters (which are counted in updateKilobotState()
+                countRed=0;countGreen=0;countBlue=0;countOff=0;
+                // Update Kilobot States
+                emit updateKilobotStates();
+            }
 
-            //Save image and log data once every m_log_period seconds
-            //if (qRound(m_time*10.0f) % qRound(m_log_period*10.0f) == 0)
-            if (qRound((m_time-m_last_log)*10.0f) >= m_log_period*10.0f)
-            { // every m_log_period
-                m_last_log=m_time;
-                if (saveImages) {
-                    emit saveImage(im_filename_prefix.arg(m_expno,1)+im_filename_suffix.arg(savedImagesCounter++, 5,10, QChar('0')));
-                }
-                if (logExp)
-                {
-                    log_stream << this->m_time;
-                    for (int i = 0; i < allKiloIDs.size(); ++i){
-                        kilobot_id kID = allKiloIDs[i];
-                        log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+            //Save image and log data once every m_log_period seconds [we avoid to log data at the timestep that follows a RTID as it can contain spurious information]
+            if (RTID_wasActive==0) {
+                //if (qRound(m_time*10.0f) % qRound(m_log_period*10.0f) == 0)
+                if (qRound((m_time-m_last_log)*10.0f) >= m_log_period*10.0f)
+                { // every m_log_period
+                    m_last_log=m_time;
+                    if (saveImages) {
+                        emit saveImage(im_filename_prefix.arg(m_expno,1)+im_filename_suffix.arg(savedImagesCounter++, 5,10, QChar('0')));
                     }
-                    log_stream << endl;
+                    if (logExp)
+                    {
+                        log_stream << this->m_time;
+                        for (int i = 0; i < allKiloIDs.size(); ++i){
+                            kilobot_id kID = allKiloIDs[i];
+                            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+                        }
+                        log_stream << endl;
+                    }
                 }
+            } else {
+                RTID_wasActive -= 1;
             }
 
             // move to the next group when all previous messages have been sent
@@ -495,6 +507,10 @@ void mykilobotexperiment::run()
             plotEnvironment();
         }
         else{
+            if (RTID_wasActive==0) { // it means this is the first timestep with active RTID
+                RTID_timer.start();
+            }
+            RTID_wasActive=RTID_periodOfStoppedActivityAfterActive; // flag used to avoid to log spurious data after RTID. We wait for RTID_periodOfStoppedActivityAfterActive loops
             clearDrawings();
             clearDrawingsOnRecordedImage();
         }
@@ -538,10 +554,11 @@ void mykilobotexperiment::updateKilobotState(Kilobot kilobotCopy) {
     kilobot_id kID = kilobotCopy.getID();
     QPointF kPos = kilobotCopy.getPosition();
     lightColour kColor=kilobotCopy.getLedColour();
+    double kRot = qRadiansToDegrees(qAtan2(-kilobotCopy.getVelocity().y(), kilobotCopy.getVelocity().x()));
 
     // update values for logging
     if (logExp){
-        allKilos[kID].updateAllValues(kID, kPos, 0, kColor);
+        allKilos[kID].updateAllValues(kID, kPos, kRot, kColor);
     }
 
     //qDebug()<<kID;

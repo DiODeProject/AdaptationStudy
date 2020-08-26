@@ -117,7 +117,6 @@ private:
     //discovery update period in seconds
     float m_VirtualSensorUpdatePeriod;
 
-
     //Logging period in seconds
     float m_log_period;
     float m_last_log=0, m_last_log2=0;
@@ -163,8 +162,10 @@ private:
     float Trobot_last=0.0;
 
     QTime ElapsedTime;
-    QTime RTID_ElapsedTime;
-
+    QTime RTID_timer;
+    int RTID_elapsedTime; // in milliseconds
+    int RTID_wasActive;
+    int RTID_periodOfStoppedActivityAfterActive=7;
 
     uint8_t initial_opinion=2;
 

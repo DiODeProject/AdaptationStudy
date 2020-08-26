@@ -162,7 +162,10 @@ private:
     float Trobot_last=0.0;
 
     QTime ElapsedTime;
-    QTime RTID_ElapsedTime;
+    QTime RTID_timer;
+    int RTID_elapsedTime; // in milliseconds
+    int RTID_wasActive;
+    int RTID_periodOfStoppedActivityAfterActive=7;
 
 
     uint8_t initial_opinion=2;

@@ -61,7 +61,7 @@ public:
     float m_fCellLength=0;
 
     // Wall avoidance variables
-    QVector <bool> m_wall_detected;    
+    QVector <bool> m_wall_detected;
 
 signals:
     void errorMessage(QString);
