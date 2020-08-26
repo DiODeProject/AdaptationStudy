@@ -533,7 +533,7 @@ void mykilobotexperiment::run()
             if (RTID_wasActive==0) { // it means this is the first timestep with active RTID
                 RTID_timer.start();
             }
-            RTID_wasActive=RTID_periodOfStoppedActivityAfterActive; // flag used to avoid to log spurious data after RTID. We wait for 3 loops
+            RTID_wasActive=RTID_periodOfStoppedActivityAfterActive; // flag used to avoid to log spurious data after RTID. We wait for RTID_periodOfStoppedActivityAfterActive loops
             clearDrawings();
             clearDrawingsOnRecordedImage();
         }

@@ -45,32 +45,38 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
 
             // Get robot's GPS coordinates
             QPoint GPS_cords=PositionToGPS(kPos);
-            //                        qDebug() << kID << " X=" <<GPS_cords.x()<< " Y=" <<31-GPS_cords.y();
+            uint8_t GPS_y = 31-GPS_cords.y();
 
             // Set msg type
             m_message_type=0; // 0->GPS 1->Discovery
 
             // Get robot's orientation
-            double orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
-            //            qDebug() << kID << orientDegrees;
-
+            // if the robot has hit a wall, the tracking orientation can be wrong and therefore we manually correct it
+            double orientDegrees = 0;
+            if (GPS_cords.x()==0){
+                orientDegrees = 180;
+            } else if (GPS_y==0){
+                orientDegrees = 270;
+            } else if (GPS_cords.x()==GPS_max_x) {
+                orientDegrees = 0;
+            } else if (GPS_y==GPS_max_y) {
+                orientDegrees = 90;
+            } else { // the robot is not against a wall
+            //if (GPS_cords.x()!=0 && GPS_cords.y()!=0 && GPS_cords.x()!=GPS_max_x && GPS_cords.y()!=GPS_max_y){ // if the robot is not against a wall
+                orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
+            }
             orientDegrees=desNormAngle(orientDegrees);
-            //                        qDebug() << kID << orientDegrees;
 
-
-
-
-            if(m_Single_Discovery[kID]!=0 && m_optionStillThere[kID])
-            {
+            // set on_option flag
+            if(m_Single_Discovery[kID]!=0 && m_optionStillThere[kID]) {
                 on_option = 1;
             }
-
 
             msg.id= kID<<2 | on_option <<1 |m_message_type;
             msg.type= ( (uint8_t) GPS_cords.x() ) & 0x0F;
 
 
-            msg.data= ( (uint8_t) ( 31-GPS_cords.y() )  ) << 6 | ( (uint8_t) (orientDegrees/12.0) );
+            msg.data= GPS_y << 6 | ( (uint8_t) (orientDegrees/12.0) );
             MessagingQueue[kID].push_back(msg);
             //qDebug() << "Sending GPS (" << GPS_cords.x() << "," << 31-GPS_cords.y() << ")[o:"<<on_option<<"] to robot " << kID;
             m_requireGPS[kID]=false;

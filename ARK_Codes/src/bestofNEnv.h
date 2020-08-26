@@ -68,6 +68,8 @@ public:
     unsigned int m_unGpsCells=32;
     float m_fCellLength=0;
     QVector <bool> m_requireGPS;
+    int GPS_max_x=15; // max GPS value on x axis (to correct orientation of robot colliding with walls)
+    int GPS_max_y=15; // max GPS value on y axis (to correct orientation of robot colliding with walls)
 
     // Wall avoidance variables
     QVector <bool> m_wall_detected;
