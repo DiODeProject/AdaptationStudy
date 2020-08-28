@@ -101,6 +101,7 @@ bool avoidingWall;
 uint32_t wallAvoidanceStart;
 uint32_t wallAvoidanceRotate=100; // about 3s
 uint32_t wallAvoidanceStraight=200; // about 6s
+uint32_t wallAvoidanceCounter=0; // to decide when the robot is stuck...
 
 /* Options lookup table*/
 uint8_t options_IDs[10];
@@ -244,8 +245,17 @@ void set_motion( motion_t new_motion_type ) {
                 spinup_motors();
             if (calibrated)
             {
-                if(!runtime_identification)
-                    set_motors(kilo_turn_left,0);
+                if(!runtime_identification) {
+                    uint8_t leftStrenght = kilo_turn_left;
+                    uint8_t i;
+                    for (i=3; i <= 18; i += 3){
+                        if (wallAvoidanceCounter >= i){
+                            leftStrenght+=2;
+                        }
+                    }
+                    set_motors(leftStrenght,0);
+//                    set_motors(kilo_turn_left,0);
+                }
             }
             else{
                 if(!runtime_identification)
@@ -256,8 +266,17 @@ void set_motion( motion_t new_motion_type ) {
             if(!runtime_identification)
                 spinup_motors();
             if (calibrated){
-                if(!runtime_identification)
-                    set_motors(0,kilo_turn_right);
+                if(!runtime_identification) {
+                    uint8_t rightStrenght = kilo_turn_right;
+                    uint8_t i;
+                    for (i=3; i <= 18; i += 3){
+                        if (wallAvoidanceCounter >= i){
+                            rightStrenght+=2;
+                        }
+                    }
+                    set_motors(0,rightStrenght);
+//                    set_motors(0,kilo_turn_right);
+                }
             }
             else{
                 if(!runtime_identification)
@@ -771,7 +790,6 @@ void random_walk(){
     }
 }
 
-
 /*-------------------------------------------------------------------*/
 /* Function to go to the Goal location (e.g. to resample an option)  */
 /*-------------------------------------------------------------------*/
@@ -914,6 +932,16 @@ void tx_message_success() {
     broadcast_msg = false;
 }
 
+void check_if_against_a_wall(){
+    if ( Robot_GPS_X==0 || Robot_GPS_X>=GPS_maxcell-1 || Robot_GPS_Y==0 || Robot_GPS_Y>=GPS_maxcell-1 ){
+        if (wallAvoidanceCounter<18)
+            wallAvoidanceCounter += 1;
+        else
+            wallAvoidanceCounter = 1;
+    } else {
+        wallAvoidanceCounter = 0;
+    }
+}
 
 /*-------------------------------------------------------------------*/
 /* Main loop                                                         */
@@ -928,6 +956,7 @@ void loop() {
         }
         if (new_sa_msg_gps == true) {
             check_if_my_option_has_disappeared();
+            check_if_against_a_wall();
         }
         if(GoingToResampleOption || GoingAway){
             GoToGoalLocation();
