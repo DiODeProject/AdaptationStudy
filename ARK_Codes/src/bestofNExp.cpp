@@ -307,7 +307,7 @@ void mykilobotexperiment::initialise(bool isResume) {
         log_stream << this->m_time;
         for (int i = 0; i < allKiloIDs.size(); ++i){
             kilobot_id kID = allKiloIDs[i];
-            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation << "\t" << m_optionsEnv.goingResamplingList[kID];
         }
         log_stream << endl;
     }
@@ -323,6 +323,8 @@ void mykilobotexperiment::stopExperiment() {
         log_file.close();
     }
     m_optionsEnv.m_Options.clear();
+    m_optionsEnv.goingResamplingList.clear();
+    previousColourList.clear();
     m_NumberOfConfigMsgsSent=0;
     RobotSpeaking=false;
     configurationMsgsSent=false;
@@ -431,7 +433,7 @@ void mykilobotexperiment::run()
                         log_stream << this->m_time;
                         for (int i = 0; i < allKiloIDs.size(); ++i){
                             kilobot_id kID = allKiloIDs[i];
-                            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+                            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation << "\t" << m_optionsEnv.goingResamplingList[kID];
                         }
                         log_stream << endl;
                     }
@@ -563,10 +565,14 @@ void mykilobotexperiment::setupInitialKilobotState(Kilobot kilobotCopy) {
         m_optionsEnv.m_requireGPS.resize(kID+1);
         m_optionsEnv.MessagingQueue.resize(kID+1);
         m_optionsEnv.UpdateMessagingQueue.resize(kID+1);
+        previousColourList.resize(kID+1);
+        m_optionsEnv.goingResamplingList.resize(kID+1);
     }
 
     KiloLog kLog(kID, kilobotCopy.getPosition(), 0, OFF);
     allKilos[kID] = kLog;
+    previousColourList[kID] = OFF;
+    m_optionsEnv.goingResamplingList[kID] = false;
     if (!allKiloIDs.contains(kID)) allKiloIDs.append(kID);
 
 }
@@ -577,6 +583,22 @@ void mykilobotexperiment::updateKilobotState(Kilobot kilobotCopy) {
     kilobot_id kID = kilobotCopy.getID();
     QPointF kPos = kilobotCopy.getPosition();
     lightColour kColor=kilobotCopy.getLedColour();
+
+    lightColour commitment = kColor;
+    if (commitment==OFF){ // if the tracker detects an OFF led, we use the previous detected colour (as in the compare method there are no uncommitted)
+        commitment = previousColourList[kID];
+    } else {
+        // if the robot changed opinion it needs resampling (except if it is already within the option)
+        if ( previousColourList[kID] != commitment && commitment!=OFF && previousColourList[kID]!=OFF) { // I use previousColourList[kID]!=OFF to avoid to initially cast all robots as needed resampling
+            /* check if already within option, in this case, (we assume) no resamplind would be needed */
+            unsigned int oidx = m_optionsEnv.indexOptOfColour(commitment);
+            int idx=-1;
+            for (int i=0;i<m_optionsEnv.m_Options.size();i++ ) { if (m_optionsEnv.m_Options[i].ID==oidx) {idx=i;} }
+            /* if not in the option area, set goingResamplingList[kID]=true */
+            m_optionsEnv.goingResamplingList[kID] = !(idx>=0 && (pow(kPos.x()-m_optionsEnv.m_Options[idx].posX,2)+pow(kPos.y()-m_optionsEnv.m_Options[idx].posY,2)) < pow(m_optionsEnv.m_Options[idx].rad,2) );
+        }
+        previousColourList[kID] = commitment;
+    }
 
     // update values for logging
     if (logExp){

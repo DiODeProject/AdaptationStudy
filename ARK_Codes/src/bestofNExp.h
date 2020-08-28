@@ -131,6 +131,7 @@ private:
     QTextStream log_stream;
     QVector < kilobot_id >  allKiloIDs;
     QVector <KiloLog> allKilos;
+    QVector<lightColour> previousColourList;
 
     // GUI objects
     QTableWidget * tableofoptions;

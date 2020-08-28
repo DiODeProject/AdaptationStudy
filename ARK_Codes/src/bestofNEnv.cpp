@@ -22,6 +22,20 @@ void mykilobotenvironment::update() {
     }
 }
 
+// return the option ID for a given kilobot colour
+unsigned int mykilobotenvironment::indexOptOfColour(lightColour kColor) {
+    switch(kColor){
+    case RED:
+        return 1;
+    case GREEN:
+        return 3;
+    case BLUE:
+        return 2;
+    default:
+        return 0;
+    }
+}
+
 // generate virtual sensor readings & send to KB
 void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
     kilobot_id kID = kilobot.getID();
@@ -52,18 +66,18 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
 
             // Get robot's orientation
             // if the robot has hit a wall, the tracking orientation can be wrong and therefore we manually correct it
-            double orientDegrees = 0;
-            if (GPS_cords.x()==0){
-                orientDegrees = 180;
-            } else if (GPS_y==0){
-                orientDegrees = 270;
-            } else if (GPS_cords.x()==GPS_max_x) {
-                orientDegrees = 0;
-            } else if (GPS_y==GPS_max_y) {
-                orientDegrees = 90;
-            } else { // the robot is not against a wall
-            //if (GPS_cords.x()!=0 && GPS_cords.y()!=0 && GPS_cords.x()!=GPS_max_x && GPS_cords.y()!=GPS_max_y){ // if the robot is not against a wall
-                orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
+            double orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
+            double velocityLength = qSqrt( qPow(kilobot.getVelocity().x(),2) + qPow(kilobot.getVelocity().y(),2) );
+            if (velocityLength < 0.5){ // if the robot is not moving
+                if (GPS_cords.x()==0){
+                    orientDegrees = 180;
+                } else if (GPS_y==0){
+                    orientDegrees = 270;
+                } else if (GPS_cords.x()==GPS_max_x) {
+                    orientDegrees = 0;
+                } else if (GPS_y==GPS_max_y) {
+                    orientDegrees = 90;
+                }
             }
             orientDegrees=desNormAngle(orientDegrees);
 
@@ -161,10 +175,8 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
         MessagingQueue[kID].pop_front();
     }
 
-
-    kilobot_colour kLed = kilobot.getLedColour();
+    kilobot_colour kColor = kilobot.getLedColour();
     option Op;
-
 
     // Check discovery virtual-sensor
     for (int i=0;i<m_Options.size();i++ )
@@ -186,6 +198,10 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
                 m_Single_Discovery[kID]=Op.ID;
                 m_VirtualSensorsNeedUpdate=true;
                 m_optionStillThere[kID]=false;
+            }
+            // if robot is within the option and it wanted to resample, deactivate the resampling toggle
+            if (Op.ID == indexOptOfColour(kColor)) {
+                goingResamplingList[kID] = false;
             }
         }
     }

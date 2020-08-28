@@ -87,18 +87,18 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
 
         // Get robot's orientation
         // if the robot has hit a wall, the tracking orientation can be wrong and therefore we manually correct it
-        double orientDegrees = 0;
-        if (GPS_cords.x()==0){
-            orientDegrees = 0;
-        } else if (GPS_y==0){
-            orientDegrees = 90;
-        } else if (GPS_cords.x()==GPS_max_x) {
-            orientDegrees = 180;
-        } else if (GPS_y==GPS_max_y) {
-            orientDegrees = 270;
-        } else { // the robot is not against a wall
-        //if (GPS_cords.x()!=0 && GPS_cords.y()!=0 && GPS_cords.x()!=GPS_max_x && GPS_cords.y()!=GPS_max_y){ // if the robot is not against a wall
-            orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
+        double orientDegrees = qRadiansToDegrees(qAtan2(-kilobot.getVelocity().y(),kilobot.getVelocity().x()));
+        double velocityLength = qSqrt( qPow(kilobot.getVelocity().x(),2) + qPow(kilobot.getVelocity().y(),2) );
+        if (velocityLength < 0.5){ // if the robot is not moving
+            if (GPS_cords.x()==0){
+                orientDegrees = 180;
+            } else if (GPS_y==0){
+                orientDegrees = 270;
+            } else if (GPS_cords.x()==GPS_max_x) {
+                orientDegrees = 0;
+            } else if (GPS_y==GPS_max_y) {
+                orientDegrees = 90;
+            }
         }
         orientDegrees=desNormAngle(orientDegrees);
 
@@ -111,7 +111,7 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
         msg.type= ( (uint8_t) GPS_cords.x() ) & 0x0F;
         msg.data= GPS_y << 6 | ( (uint8_t) (orientDegrees/12.0) );
         emit transmitKiloState(msg);
-        qDebug() << "Sending GPS (" << GPS_cords.x() << "," << 31-GPS_cords.y() << "){"<<orientDegrees<<"}[op:"<<on_option<<"] to robot " << kID;
+        //qDebug() << "Sending GPS (" << GPS_cords.x() << "," << 31-GPS_cords.y() << "){"<<orientDegrees<<"}[op:"<<on_option<<"] to robot " << kID;
 
         if(m_Single_Discovery[kID]!=0 && m_optionStillThere[kID]) {
             // Update option virtual-sensor

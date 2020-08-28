@@ -304,7 +304,7 @@ void mykilobotexperiment::initialise(bool isResume) {
         log_stream << this->m_time;
         for (int i = 0; i < allKiloIDs.size(); ++i){
             kilobot_id kID = allKiloIDs[i];
-            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation << "\t" << m_optionsEnv.goingResamplingList[kID];
         }
         log_stream << endl;
     }
@@ -453,7 +453,7 @@ void mykilobotexperiment::run()
                         log_stream << this->m_time;
                         for (int i = 0; i < allKiloIDs.size(); ++i){
                             kilobot_id kID = allKiloIDs[i];
-                            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation;
+                            log_stream << "\t" << kID << "\t" << allKilos[kID].colour << "\t" << allKilos[kID].position.x() << "\t" << allKilos[kID].position.y() << "\t" << allKilos[kID].orientation << "\t" << m_optionsEnv.goingResamplingList[kID];
                         }
                         log_stream << endl;
                     }
