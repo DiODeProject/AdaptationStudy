@@ -1,6 +1,7 @@
 #include "kilolib.h"
-#define DEBUG
-#include "debug.h"
+//#define DEBUG
+//#include "debug.h" // for real robots only
+//#include <stdio.h> // for ARGOS only
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
@@ -93,15 +94,10 @@ bool new_sa_msg_gps=false;
 /* Robot Goal variables*/
 uint8_t Goal_GPS_X;
 uint8_t Goal_GPS_Y;
-bool GoingAway=false;
-uint32_t lastGoingAwayTime;
-uint32_t maxGoingAwayTime=900; // about 30s
+uint32_t lastWaypointTime;
+uint32_t maxWaypointTime=3600; // about 2 minutes
 
 /* Wall Avoidance manouvers */
-bool avoidingWall;
-uint32_t wallAvoidanceStart;
-uint32_t wallAvoidanceRotate=100; // about 3s
-uint32_t wallAvoidanceStraight=200; // about 6s
 uint32_t wallAvoidanceCounter=0; // to decide when the robot is stuck...
 
 /* Options lookup table*/
@@ -337,6 +333,24 @@ void set_commitment( uint8_t new_option_GPS_X, uint8_t new_option_GPS_Y, uint8_t
     debug_lastAssignedID=my_commitment;
 }
 
+/*-----------------------------------------------------------------------------------*/
+/* Function implementing the uncorrelated random walk with the random waypoint model */
+/*-----------------------------------------------------------------------------------*/
+void random_walk_waypoint_model(bool selectNewWaypoint){
+	/* if the robot arrived to the destination, OR too much time has passed, a new goal is selected */
+	if ( selectNewWaypoint || ((Robot_GPS_X==Goal_GPS_X) && (Robot_GPS_Y==Goal_GPS_Y)) || kilo_ticks >= lastWaypointTime + maxWaypointTime) {
+		lastWaypointTime = kilo_ticks;
+
+		do {
+			Goal_GPS_X=rand()%( GPS_maxcell-2 )+1; // getting a random number in the range [1,GPS_maxcell-1] to avoid the border cells (upper bound is -2 because index is from 0)
+			Goal_GPS_Y=rand()%( GPS_maxcell-2 )+1;
+			if ( abs(Robot_GPS_X-Goal_GPS_X) >= minDist || abs(Robot_GPS_Y-Goal_GPS_Y) >= minDist ){ // if the selected cell is enough distant from the current location, it's good
+				break;
+			}
+		} while(true);
+	}
+	//printf("robot %u at (%u,%u) new waypoint: (%u,%u)\n",kilo_uid,Robot_GPS_X,Robot_GPS_Y,Goal_GPS_X,Goal_GPS_Y);
+}
 
 /*-------------------------------------------------------------------*/
 /* Init function                                                     */
@@ -352,6 +366,8 @@ void setup()
     /* Initialise random seed */
     uint8_t seed = rand_hard();
     rand_seed(seed);
+    seed = rand_hard();
+    srand(seed);
 
     /* Initialise motion variables */
     set_motion( FORWARD );
@@ -379,25 +395,8 @@ void setup()
     /* initialise the GSP to the middle of the environment, to avoid to trigger wall avoidance immediately */
     Robot_GPS_X = GPS_maxcell/2;
     Robot_GPS_Y = GPS_maxcell/2;
-    avoidingWall=false;
+    random_walk_waypoint_model(true);
 
-}
-
-/*----------------------------------------------------------------------------------------------------------------*/
-/* Function to set a Goal_GPS_(X and Y) to a location that is at least minDist distant from discovered_option_GPS */
-/*----------------------------------------------------------------------------------------------------------------*/
-void set_random_goal_location_far_from_option() {
-    GoingToResampleOption=false;
-    GoingAway=true;
-    lastGoingAwayTime = kilo_ticks;
-
-    uint32_t distance=0;
-    do {
-        Goal_GPS_X=rand()%( GPS_maxcell-4 )+2; // getting a random number in the range [2,GPS_maxcell-3] to avoid the border cells (upper bound is -3 because index is from 0)
-        Goal_GPS_Y=rand()%( GPS_maxcell-4 )+2;
-
-        distance=sqrt((-Goal_GPS_X)*(discovered_option_GPS_X-Goal_GPS_X)+(discovered_option_GPS_Y-Goal_GPS_Y)*(discovered_option_GPS_Y-Goal_GPS_Y));
-    } while(distance<=minDist);
 }
 
 /*-------------------------------------------------------------------------------*/
@@ -409,35 +408,12 @@ void check_if_my_option_has_disappeared(){
         my_option_quality=0;
 
         if(GoingToResampleOption) {
-            set_random_goal_location_far_from_option();
+        	GoingToResampleOption=false;
+            random_walk_waypoint_model(true);
         }
     }
 }
 
-void avoidWall(bool startNow){
-    // start the wall avoidance manouvers
-    if (startNow){
-        GoingAway=false;
-        avoidingWall=true;
-        wallAvoidanceStart = kilo_ticks;
-        /* begin with rotation away from the wall (i.e. towards the centre of the arena) for time wallAvoidanceRotate */
-        double angleToCentre = atan2((GPS_maxcell/2)-Robot_GPS_Y,(GPS_maxcell/2)-Robot_GPS_X)/PI*180-Robot_orientation;
-        NormalizeAngle(&angleToCentre);
-        if (angleToCentre>0) {
-            set_motion(TURN_LEFT);
-        } else {
-            set_motion(TURN_RIGHT);
-        }
-    }
-
-    if (kilo_ticks > wallAvoidanceStart + wallAvoidanceRotate){ // change motion to straight
-        set_motion(FORWARD);
-    }
-
-    if (kilo_ticks > wallAvoidanceStart + wallAvoidanceRotate + wallAvoidanceStraight){ // terminate the wall avoidance manouvers
-        avoidingWall = false;
-    }
-}
 /*-------------------------------------------------------------------*/
 /* Simulating the receiption of another robot's message              */
 /*-------------------------------------------------------------------*/
@@ -491,8 +467,8 @@ void update_virtual_global_communication() {
     unsigned int P_greenInt = (unsigned int)(P_green*RANGE_RND);
     unsigned int P_blueInt  = (unsigned int)(P_blue *RANGE_RND);
 
-    printf("msg info: o:[%d, %d, %d] q:(%d,%d,%d)\n",redBots,greenBots,blueBots,redQ,greenQ,blueQ);
-    printf("Probs: o:[%u, %u, %u] random:%d\n",P_redInt,P_greenInt,P_blueInt,random);
+    //printf("msg info: o:[%d, %d, %d] q:(%d,%d,%d)\n",redBots,greenBots,blueBots,redQ,greenQ,blueQ);
+    //printf("Probs: o:[%u, %u, %u] random:%d\n",P_redInt,P_greenInt,P_blueInt,random);
 
     uint8_t selectedOptID=0;
     if (P_red > 0 && random <= P_redInt) { /* virtually received a red message */
@@ -735,7 +711,8 @@ void sample_option_quality(){
             debug_lastSource=99;
 
             if(GoingToResampleOption) {
-                set_random_goal_location_far_from_option(); // after 'forced' resampling the robot go far to spread the opinion
+            	GoingToResampleOption=false;
+            	random_walk_waypoint_model(true); // after resampling the robot resume random walk
             }
             discovered = false;
         } else { // inside a site different from my_commitment
@@ -809,21 +786,20 @@ void update_commitment() {
 			{
 				/* the agent discovers a new option */
 				set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
-                                debug_lastSource = 10;
+				debug_lastSource = 10;
 
-				/* Go away from the discovered option */
-				set_random_goal_location_far_from_option();
+				/* Resume random walk with a new waypoint */
+				GoingToResampleOption=false;
+				random_walk_waypoint_model(true);
 			}
 
 			if(social)
 			{
                                 /* the agent gets recruited a new option*/
 				set_commitment(received_option_GPS_X,received_option_GPS_Y, 0);
-                                debug_lastSource = 20;
+                debug_lastSource = 20;
 				Goal_GPS_X=my_option_GPS_X;
 				Goal_GPS_Y=my_option_GPS_Y;
-				if(GoingAway) { GoingAway=false; }
-				if(avoidingWall) { avoidingWall=false; }
 				GoingToResampleOption=true;
 			}
 		}
@@ -879,8 +855,8 @@ void update_commitment() {
                                 set_commitment( discovered_option_GPS_X , discovered_option_GPS_Y , discovered_option_quality );
                                 debug_lastSource = 1;
 
-                                /* Go away from the discovered option */
-                                set_random_goal_location_far_from_option();
+                                /* select a new waypoint for the random walk */
+                                random_walk_waypoint_model(true);
                         }
 
                         if(social)
@@ -890,8 +866,6 @@ void update_commitment() {
                                 debug_lastSource = 2;
                                 Goal_GPS_X=my_option_GPS_X;
                                 Goal_GPS_Y=my_option_GPS_Y;
-                                if(GoingAway) { GoingAway=false; }
-                                if(avoidingWall) { avoidingWall=false; }
                                 GoingToResampleOption=true;
                         }
 		}
@@ -901,11 +875,10 @@ void update_commitment() {
 	}
 }
 
-
 /*-------------------------------------------------------------------*/
 /* Function implementing the uncorrelated random walk                */
 /*-------------------------------------------------------------------*/
-void random_walk(){
+void random_walk_open_loop(){
     switch( current_motion_type )
     {
     case TURN_LEFT:
@@ -943,38 +916,25 @@ void GoToGoalLocation(){
     if(new_sa_msg_gps){
         new_sa_msg_gps=false;
 
-        //debug_print("My orientation is: %f\n", Robot_orientation);
-        //debug_print("In need to turn: %f\n", AngleToGoal() );
-
-        /* if going away and gets close to a wall, it stops the go away manouvers and just move away from the wall */
-        if(( (Robot_GPS_X==Goal_GPS_X) &&  (Robot_GPS_Y==Goal_GPS_Y) ) || ( GoingAway && ( Robot_GPS_X==0 || Robot_GPS_X>=GPS_maxcell-1 || Robot_GPS_Y==0 || Robot_GPS_Y>=GPS_maxcell-1 ) ) )
+        double angleToGoal = AngleToGoal();
+        if(fabs(angleToGoal) <= 20)
         {
-            if(GoingAway){
-                //GoingAway=false;
-                avoidWall(true);
-            }
+        	set_motion(FORWARD);
+        	last_motion_ticks = kilo_ticks;
         }
         else{
-        	double angleToGoal = AngleToGoal();
-            if(fabs(angleToGoal) <= 20)
-            {
-                set_motion(FORWARD);
-                last_motion_ticks = kilo_ticks;
-            }
-            else{
-                if(angleToGoal>0){
-                    set_motion(TURN_LEFT);
-                    last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
-                    //                    debug_print("In need to turn left for: %d\n", turning_ticks );
-                }
-                else{
-                    set_motion(TURN_RIGHT);
-                    last_motion_ticks = kilo_ticks;
-                    turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
-                    //                    debug_print("In need to turn right for: %d\n", turning_ticks );
-                }
-            }
+        	if(angleToGoal>0){
+        		set_motion(TURN_LEFT);
+        		last_motion_ticks = kilo_ticks;
+        		turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
+        		//                    debug_print("In need to turn left for: %d\n", turning_ticks );
+        	}
+        	else{
+        		set_motion(TURN_RIGHT);
+        		last_motion_ticks = kilo_ticks;
+        		turning_ticks=(unsigned int) ( fabs(angleToGoal)/RotSpeed*32.0 );
+        		//                    debug_print("In need to turn right for: %d\n", turning_ticks );
+        	}
         }
     }
 
@@ -1003,10 +963,6 @@ void GoToGoalLocation(){
         set_motion(STOP);
     }
 
-    /* after too much time, I interrupt the goAway and I resume the random walk */
-    if (GoingAway && kilo_ticks >= lastGoingAwayTime + maxGoingAwayTime){
-        GoingAway=false;
-    }
 }
 
 /*-------------------------------------------------------------------*/
@@ -1093,7 +1049,7 @@ void check_if_against_a_wall(){
 /* Main loop                                                         */
 /*-------------------------------------------------------------------*/
 void loop() {
-
+	//if (kilo_uid<3){printf("%u my destination is (%u,%u) and my position is (%u,%u)\n",kilo_uid,Goal_GPS_X,Goal_GPS_Y,Robot_GPS_X,Robot_GPS_Y);}
     if(!runtime_identification)
     {
         backup_kiloticks=kilo_ticks; // which we restore in after runtime_identification
@@ -1110,19 +1066,10 @@ void loop() {
             check_if_against_a_wall();
         }
 
-        if(GoingToResampleOption || GoingAway){
-            GoToGoalLocation();
+        if (!GoingToResampleOption && new_sa_msg_gps) { // if not going to resample
+        	random_walk_waypoint_model(false); // update the waypoints
         }
-        else if (avoidingWall) {
-            avoidWall(false);
-        }
-        else {
-            if ( new_sa_msg_gps && ( Robot_GPS_X==0 || Robot_GPS_X>=GPS_maxcell-1 || Robot_GPS_Y==0 || Robot_GPS_Y>=GPS_maxcell-1 ) ) { // if near to a wall, go away from it
-                avoidWall(true);
-            } else {
-                random_walk();
-            }
-        }
+        GoToGoalLocation();
 
         update_commitment();
         broadcast();
@@ -1133,13 +1080,12 @@ void loop() {
 //            set_color(RGB(3,3,3));
 //        }
 //        else{
-        printf("[t.%lu] opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d) dbg:[%lu,%d,%d]\n",kilo_ticks,my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y,debug_lastTableUpdate,debug_lastAssignedID,debug_lastSource);
-        int i;
-        for(i=0;i<number_of_options;i++){
-            printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
-        }
+//        printf("[t.%lu] opt:%d q:%d p:(%d,%d) state[GA:%d, WA:%d, GR:%d] goal:(%d,%d) dbg:[%lu,%d,%d]\n",kilo_ticks,my_commitment,my_option_quality,my_option_GPS_X,my_option_GPS_Y,GoingAway,avoidingWall,GoingToResampleOption,Goal_GPS_X,Goal_GPS_Y,debug_lastTableUpdate,debug_lastAssignedID,debug_lastSource);
+//        int i;
+//        for(i=0;i<number_of_options;i++){
+//            printf("table o:%d p:(%d,%d)\n",options_IDs[i],options_GPS_X[i],options_GPS_Y[i]);
+//        }
         if (number_of_options==3){
-        if (true){
         switch( my_commitment ) {
         case 5:
             set_color(RGB(0,3,3));
@@ -1162,13 +1108,6 @@ void loop() {
         default:
             set_color(RGB(3,3,3));
             break;
-        }
-        } else { // debug kilobot states
-            if (GoingToResampleOption){ set_color(RGB(3,0,0)); } //red
-            if (GoingAway){ set_color(RGB(0,0,3)); } //blue
-            if (avoidingWall){ set_color(RGB(0,3,0)); } //green
-            if ( (avoidingWall&&GoingToResampleOption) || (avoidingWall&&GoingAway)  || (GoingToResampleOption&&GoingAway) ){ set_color(RGB(3,3,3)); } //white
-            if ( !avoidingWall && !GoingToResampleOption && !GoingAway) { set_color(RGB(0,0,0)); } //black
         }
         }
         else{
@@ -1198,7 +1137,7 @@ void loop() {
 int main()
 {
     kilo_init();
-    debug_init();
+    //debug_init();
     kilo_message_tx = message_tx;
     kilo_message_tx_success = tx_message_success;
     kilo_message_rx=message_rx;
