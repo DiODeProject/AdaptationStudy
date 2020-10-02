@@ -124,6 +124,7 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
 //            MessagingQueue[kID].push_back(msg);
 //            m_Single_Discovery[kID]=0;
         }
+
     }
 
 
@@ -199,6 +200,7 @@ void mykilobotenvironment::updateVirtualSensor(Kilobot kilobot) {
                 m_VirtualSensorsNeedUpdate=true;
                 m_optionStillThere[kID]=false;
             }
+
             // if robot is within the option and it wanted to resample, deactivate the resampling toggle
             if (Op.ID == indexOptOfColour(kColor)) {
                 goingResamplingList[kID] = false;

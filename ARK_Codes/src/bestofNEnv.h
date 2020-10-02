@@ -21,6 +21,7 @@ struct option {
     unsigned int GPS_X; // in cells
     unsigned int GPS_Y; // in cells
     float rad;  // in pixel
+    float rad_m;
     QColor color;
 
     float AppearanceTime=0;

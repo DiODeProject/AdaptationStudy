@@ -83,7 +83,7 @@ bool new_sa_msg_discovery = false;
 
 /* Noise variables */
 //double variance=0.1;
-double standard_deviation=0.316227766; // this is the sqrt(0.1)
+double standard_deviation=1.0; // this is the sqrt(0.1)
 
 /* Robot GPS variables */
 uint8_t Robot_GPS_X;
@@ -130,7 +130,7 @@ uint8_t GPS_maxcell=16;
 uint8_t minDist=4;
 
 float GPS_To_Meter=1/16.0;
-float Robot_FoV;
+float Robot_FoV=0.0;
 
 // model parameter
 float param =0.1;
@@ -613,7 +613,7 @@ void message_rx( message_t *msg, distance_measurement_t *d ) {
             options_IDs[number_of_options] = msg->data[0];
             options_GPS_X[number_of_options] = msg->data[1];
             options_GPS_Y[number_of_options] = msg->data[2];
-            Robot_FoV=msg->data[3]/100.0-GPS_To_Meter;
+            Robot_FoV=(msg->data[3]/100.0)-GPS_To_Meter;
 
             minDist=msg->data[4];
             my_commitment=msg->data[5];
@@ -704,7 +704,6 @@ void sample_option_quality(){
 	if(discovered_option_quality<0){
 		discovered_option_quality=0;
 	}
-
         if( ( discovered_option_GPS_X == my_option_GPS_X ) && ( discovered_option_GPS_Y == my_option_GPS_Y ) ) // re-sampling
         {
             set_commitment(my_option_GPS_X,my_option_GPS_Y,discovered_option_quality); // updating the quality with the latest estimated value
@@ -871,7 +870,7 @@ void update_commitment() {
 		}
 
 		received_message = false;
-		discovered = false;
+                discovered = false;
 	}
 }
 
@@ -1067,7 +1066,7 @@ void loop() {
         }
 
         if (!GoingToResampleOption && new_sa_msg_gps) { // if not going to resample
-        	random_walk_waypoint_model(false); // update the waypoints
+                random_walk_waypoint_model(false); // update the waypoints
         }
         GoToGoalLocation();
 
@@ -1076,7 +1075,7 @@ void loop() {
 
         /* Set LED color*/
         //if(GoingToResampleOption || GoingAway){
-//        if (debugState){
+//        if (debug_state){
 //            set_color(RGB(3,3,3));
 //        }
 //        else{
@@ -1126,6 +1125,7 @@ void loop() {
                 }
             }
         }
+//        }
     }
 
 }
@@ -1137,7 +1137,7 @@ void loop() {
 int main()
 {
     kilo_init();
-    //debug_init();
+//    debug_init();
     kilo_message_tx = message_tx;
     kilo_message_tx_success = tx_message_success;
     kilo_message_rx=message_rx;

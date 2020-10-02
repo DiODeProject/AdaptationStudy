@@ -348,7 +348,8 @@ void mykilobotexperiment::run()
         msg.data[0]= m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].ID; // OP ID
         msg.data[1]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_X; // OP X
         msg.data[2]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].GPS_Y; // OP Y
-        msg.data[3]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].rad*100; // robot field of view to detect disappearance
+//        msg.data[3]= (uint8_t) m_optionsEnv.m_Options[m_NumberOfConfigMsgsSent].rad*100; // robot field of view to detect disappearance
+        msg.data[3]= (uint8_t) (m_OptionsRadius*100); // robot field of view to detect disappearance
         msg.data[4]= 4; // min distance to go away
 
         if(initial_opinion!=0)
