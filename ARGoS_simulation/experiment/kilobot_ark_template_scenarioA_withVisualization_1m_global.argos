@@ -1,0 +1,153 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+    
+<!-- ************************* -->
+<!-- * General configuration * -->
+<!-- ************************* -->
+<framework>
+<system threads="0" />
+<experiment length="exp_length"
+    ticks_per_second="10"
+    random_seed="randomseed" />
+</framework>
+        
+<!-- *************** -->
+<!-- * Controllers * -->
+<!-- *************** -->
+<controllers>
+
+    <kilobot_controller id="kbc">
+
+    <actuators>
+        <differential_steering implementation="default"
+            bias_avg="0.000015"
+            bias_stddev="0.00186"/>
+        <kilobot_communication implementation="default" />
+        <kilobot_led implementation="default" />
+    </actuators>
+
+    <sensors>
+        <kilobot_communication implementation="default" medium="kilocomm" show_rays="false" />
+    </sensors>
+
+    <params behavior="behaviourpath" />
+
+    </kilobot_controller>
+
+</controllers>
+
+<!-- ****************** -->
+<!-- * Loop functions * -->
+<!-- ****************** -->
+<loop_functions 
+    library="expfolder/build/loop_functions/libark_loop_functions"
+    label="ark_loop_functions">
+
+    <tracking
+        position="true"
+        orientation="true"
+        color="true">
+    </tracking>
+
+        
+    <variables
+        datafilename="data_file"
+        dynamic_virtual_environment="true"
+        frequency="datafrequency"
+        ohcfrequency="ohc_frequency"
+        quorum="quorumvalue"
+        timeforonemessage="arkmessagetime"
+        gps_cells="numberofgpscells"
+        quality_variance="qltvar"
+        Trobot="T_ROBOT">
+    </variables>
+
+    <environments type="manual">
+        <option id="1" quality="8" position="0.25,0.25" radius="oprad" color="255,0,0,255" AppearanceTime="0" DisappearanceTime="0" QualityChangeTime="0" qualityAfterChange="0">
+        </option>
+
+        <option id="2" quality="6" position="0.75,0.25" radius="oprad" color="0,0,255,255" AppearanceTime="0" DisappearanceTime="0" QualityChangeTime="0" qualityAfterChange="4">
+        </option>
+
+        <option id="3" quality="4" position="0.25,0.75" radius="oprad" color="0,255,0,255" AppearanceTime="0" DisappearanceTime="0" QualityChangeTime="0" qualityAfterChange="6">
+        </option>
+    </environments>
+
+</loop_functions>
+
+
+<!-- *********************** -->
+<!-- * Arena configuration * -->
+<!-- *********************** -->
+<arena size="2, 2, 1" center="1,1,0.5">
+    
+    <box id="wall_north" size="2,0.01,0.03" movable="false" >
+      <body position="1,2,0" orientation="0,0,0" />
+    </box>
+    
+    <box id="wall_south" size="2,0.01,0.03" movable="false">
+        <body position="1,0,0" orientation="0,0,0" />
+    </box>
+    
+    <box id="wall_east" size="0.01,2,0.03"  movable="false">
+        <body position="2,1,0" orientation="0,0,0" />
+    </box>
+
+    <box id="wall_west" size="0.01,2,0.03"  movable="false">
+        <body position="0,1,0" orientation="0,0,0" />
+    </box>
+
+    <box id="wall_east_1m" size="0.01,1,0.03"  movable="false">
+        <body position="1,0.5,0" orientation="0,0,0" />
+    </box>
+    <box id="wall_north_1m" size="1,0.01,0.03" movable="false">
+      <body position="0.5,1,0" orientation="0,0,0" />
+    </box>
+     
+    <distribute>
+        <position method="uniform" min="0.1,0.1,0" max="0.9,0.9,0" />
+        <orientation method="uniform" min="0,0,0" max="360,0,0" />
+        <entity quantity="num_robots" max_trials="100">
+            <kilobot id="kb" communication_range="commrng">
+                <controller config="kbc"/>
+                <dynamics2d friction="0.7" />
+            </kilobot>
+        </entity>
+    </distribute>
+
+<floor id="floor"
+    source="loop_functions"
+    pixels_per_meter="1000" /> 
+
+</arena>
+        
+<!-- ******************* -->
+<!-- * Physics engines * -->
+<!-- ******************* -->
+<physics_engines>
+    <dynamics2d id="dyn2d" />
+</physics_engines>
+
+<!-- ********* -->
+<!-- * Media * -->
+<!-- ********* -->
+
+<media>
+    <kilobot_communication id="kilocomm" />
+</media>
+
+<!-- ****************** -->
+<!-- * Visualization  * -->
+<!-- ****************** -->
+
+<visualization>
+    <qt-opengl>
+        <camera>
+            <placement idx="0" position="-0.6,0.5,1" look_at="0.5,0.5,0" lens_focal_length="38" />
+            <placement idx="1" position="0.5,0.5,2" look_at="0.5,0.5,0" lens_focal_length="45" />
+            <placement idx="2" position="1,0,2" look_at="1,1,0" lens_focal_length="20" />
+        </camera>
+    </qt-opengl>
+</visualization>
+
+</argos-configuration>
