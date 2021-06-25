@@ -13,8 +13,8 @@ The code is organised as follows:
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen. Thanks SO - http://stackoverflow.com/questions/4823468/store-comments-in-markdown-syntax)
 
 
-   [ARGoS_Repo]: <https://github.com/ilpincy/argos3>
-   [KilobotPlugin_Repo]: <https://github.com/ilpincy/argos3-kilobot>
+   [ARGoS_Repo]: <https://github.com/mstalamali/argos3>
+   [KilobotPlugin_Repo]: <https://github.com/mstalamali/argos3-kilobot>
    [ARK_Repo]: <https://github.com/DiODeProject/KilobotArena>
    [DeMaMAS_Repo]: <https://github.com/DiODeProject/DeMaMAS>
-      
+   
